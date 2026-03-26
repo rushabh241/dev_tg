@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title|default('Tender Analysis System') }}</title>
+    <!-- Font (Inter) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&display=swap"
+        rel="stylesheet">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- jQuery first, then Bootstrap CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css">
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <!-- Font Awesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: 'Inter', 'Helvetica Neue', 'Helvetica', 'Arial', 'sans-serif';
+        }
+
+        /* Slightly increase base font size for better readability */
+        body {
+            font-size: 0.95rem;
+        }
+
+        /* Make headings slightly more distinguished */
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-family: 'Plus Jakarta Sans';
+            font-weight: 500;
+        }
+
+        /* SIDEBAR NAVIGATION - Blue background with white text */
+        .sidebar .nav-link.active {
+            background-color: #4b3b8c !important;
+            color: white !important;
+            border-radius: 5px !important;
+            color: white;
+        }
+
+        .sidebar .nav-link:hover:not(.active) {
+            background-color: rgba(13, 110, 253, 0.1);
+            border-radius: 5px;
+        }
+
+        /* TABS NAVIGATION - Blue text with white background */
+        .nav-tabs .nav-link.active {
+            color: #4b3b8c !important;
+            background-color: #ffffff !important;
+            border-bottom-color: #ffffff !important;
+            font-weight: bold;
+            border-radius: 0;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+
+        .nav-tabs .nav-link:not(.active):hover {
+            color: #6f42c1;
+            background-color: rgba(13, 110, 253, 0.1);
+            border-color: #dee2e6 #dee2e6 #fff;
+        }
+
+        .nav-tabs .nav-link {
+            color: white;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            margin-right: 3px;
+        }
+
+        .card-header.tab-header {
+            background-color: #f8f9fa;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .tab-content {
+            padding: 1rem;
+            border-left: 1px solid #dee2e6;
+            border-right: 1px solid #dee2e6;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 0 0 0.25rem 0.25rem;
+        }
+
+        .sidebar {
+            z-index: 1000;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            color: #4b3b8c;
+            font-weight: bold;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+
+        .chat-messages {
+            border-radius: 8px;
+        }
+
+        /* Print styles */
+        @media print {
+
+            .sidebar,
+            .nav-tabs,
+            button,
+            .btn,
+            .no-print {
+                display: none !important;
+            }
+
+            .card {
+                border: 1px solid #ddd !important;
+                box-shadow: none !important;
+                break-inside: avoid;
+            }
+
+            .container {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            .d-none {
+                display: block !important;
+            }
+
+            body {
+                font-size: 12pt;
+            }
+
+            h1,
+            h2,
+            h3 {
+                page-break-after: avoid;
+            }
+
+            .risk-items>div {
+                page-break-inside: avoid;
+            }
+        }
+
+        /* Popup Styles */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            font-family: sans-serif;
+        }
+
+        /* Tender Search Dropdown Styles */
+        .tender-search-dropdown {
+            position: fixed;
+        }
+
+        .tender-dropdown-menu {
+            position: absolute;
+            bottom: 100%;
+            /* Changed from top: 100% to bottom: 100% */
+            left: 0;
+            right: 0;
+            width: 400px;
+            background: white;
+            border: 1px solid #ced4da;
+            border-bottom: none;
+            /* Changed from border-top: none to border-bottom: none */
+            border-radius: 4px 4px 0 0;
+            /* Changed border-radius */
+            max-height: 280px;
+            overflow-y: auto;
+            z-index: 9999;
+            display: none;
+            box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.1);
+            /* Changed shadow direction */
+            margin-bottom: 5px;
+            /* Added some spacing */
+        }
+
+        .tender-dropdown-menu.show {
+            display: block;
+        }
+
+        .tender-option {
+            padding: 8px 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #f0f0f0;
+            transition: background-color 0.15s;
+            font-size: 0.875rem;
+        }
+
+        .tender-option:last-child {
+            border-bottom: none;
+        }
+
+        .tender-option:hover {
+            background-color: #f8f9fa;
+        }
+
+        .tender-option.selected {
+            background-color: #4b3b8c;
+            color: white;
+        }
+
+        .tender-option.hidden {
+            display: none;
+        }
+
+        .tender-option.no-results {
+            padding: 15px 12px;
+            text-align: center;
+            color: #999;
+            cursor: default;
+        }
+
+        .tender-option.no-results:hover {
+            background-color: white;
+        }
+
+        /* Scrollbar styling */
+        .tender-dropdown-menu::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .tender-dropdown-menu::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .tender-dropdown-menu::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 3px;
+        }
+
+        .tender-dropdown-menu::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Vertical Navigation -->
+            <nav class="col-md-2 col-lg-2 d-md-block bg-light sidebar vh-80">
+                <div class="position-sticky pt-0">
+                    <div class="text-center mb-1">
+                        <img src="{{ url_for('static', filename='TenderGyan_Logo.png') }}" alt="Tender Analysis Logo"
+                            class="img-fluid" style="max-height: 70px;">
+                        <p class="text-muted medium mt-4">Welcome, {{ current_user.username }}</p>
+                    </div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if request.path == '/news' %}active{% endif %}"
+                                href="{{ url_for('news_page') }}">
+                                <i class="fas fa-newspaper me-2"></i> <strong class="fs-8">News</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if request.endpoint == 'organization_page' %}active{% endif %}"
+                                href="{{ url_for('organization_page') }}">
+                                <i class="fas fa-building me-2"></i> <strong class="fs-8">Org. Management</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if request.path == '/gem-tenders' %}active{% endif %}"
+                                href="{{ url_for('gem_tenders_page') }}">
+                                <i class="fas fa-gem me-2"></i> <strong class="fs-8">Tenders</strong>
+                            </a>
+                        </li>
+                        {% if access_control and access_control.upload %}
+                        <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if request.path == '/upload' %}active{% endif %}"
+                                href="{{ url_for('upload_page') }}">
+                                <i class="fas fa-upload me-2"></i> <strong class="fs-8">Upload Tender</strong>
+                            </a>
+                        </li>
+                        {% endif %}
+                        <!-- <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if org_plan == 'Bronze' %}disabled text-muted{% endif %} {% if request.path == '/upload' %}active{% endif %}"
+                                href="{{ url_for('upload_page') if org_plan != 'Bronze' else '#' }}" {% if
+                                org_plan=='Bronze' %} style="pointer-events: none; cursor: not-allowed; opacity: 0.6;"
+                                title="Upgrade to Silver/Gold to enable manual uploads" {% endif %}>
+                                <i class="fas fa-upload me-2"></i>
+                                <strong class="fs-8">Upload Tender</strong>
+                            </a>
+                        </li> -->
+
+                        <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if request.path == '/overview' %}active{% endif %}"
+                                href="{{ url_for('overview_page') }}">
+                                <i class="fas fa-file-alt me-2"></i> <strong class="fs-8">Tender Overview</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if request.path == '/risk-assessment' %}active{% endif %}"
+                                href="{{ url_for('risk_assessment_page') }}">
+                                <i class="fas fa-exclamation-triangle me-2"></i> <strong class="fs-8">Risk
+                                    Assessment</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if request.path == '/bidder-questions' %}active{% endif %}"
+                                href="{{ url_for('bidder_questions_page') }}">
+                                <i class="fas fa-question-circle me-2"></i> <strong class="fs-8">Pre Bid
+                                    Queries</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if request.path == '/qa' %}active{% endif %}"
+                                href="{{ url_for('qa_page') }}">
+                                <i class="fas fa-comment-dots me-2"></i> <strong class="fs-8">Tender Q&A</strong>
+                            </a>
+                        </li>
+                        {% if access_control and access_control.pricing_intelligence %}
+                        <li class="nav-item mb-0">
+                            <a class="nav-link py-1 {% if request.path == '/pricing-intelligence' %}active{% endif %}"
+                                href="{{ url_for('pricing_intelligence_page') }}">
+                                <i class="fas fa-tags me-2"></i> <strong class="fs-8">Pricing Intelligence</strong>
+                            </a>
+                        </li>
+                        {% endif %}
+                        <li class="nav-item mt-1">
+                            <a class="nav-link py-1 text-danger" href="{{ url_for('logout') }}">
+                                <i class="fas fa-sign-out-alt me-1"></i> Logout
+                            </a>
+                        </li>
+                    </ul>
+
+
+                    <!-- Tender Selection (show after at least one tender upload) -->
+                    <div class="mt-2 p-2 border-top">
+                        <p class="text-muted small mb-1">Switch Tender</p>
+                        <div class="tender-search-dropdown" style="position: relative;">
+                            <input type="text" id="tenderSearch" class="form-control form-control-sm"
+                                placeholder="Search or Select Tender..." autocomplete="off">
+                            <div id="tenderDropdownMenu" class="tender-dropdown-menu">
+                                <div class="tender-option" data-value="">Loading Tenders...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                {% block content %}{% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Popup while analysing the tender -->
+    <div id="loadingPopup" class="loading-overlay"
+        style="display:none; flex-direction: column; align-items: center; justify-content: center;">
+        <div class="loading-content" style="text-align:center; width: 350px;">
+            <p>Processing, please wait...</p>
+
+            <!-- Progress bar container -->
+            <div id="progressBar"
+                style="width:100%; background-color:#ddd; border-radius:5px; overflow:hidden; margin-top:10px;">
+                <div id="pBar" style="width:1%; height:20px; background-color:#4B3B8C;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Script to handle popups -->
+    <script>
+        var i = 0;
+
+        function showLoadingPopup() {
+            document.getElementById('loadingPopup').style.display = 'flex';
+            move(); // call progress bar function
+        }
+
+        function hideLoadingPopup() {
+            document.getElementById('loadingPopup').style.display = 'none';
+            // reset bar for next use
+            document.getElementById("pBar").style.width = "1%";
+            i = 0;
+        }
+
+        function move() {
+            if (i == 0) {
+                i = 1;
+                var elem = document.getElementById("pBar");
+                var width = 1;
+                var id = setInterval(frame, 300);
+                function frame() {
+                    if (width >= 99) {
+                        clearInterval(id);
+                        i = 0;
+                    }
+                    else if (width < 50) {
+                        width += 2;
+                    }
+                    else if (width < 75) {
+                        width += 1;
+                    }
+                    else if (width < 90) {
+                        width += 0.75;
+                    }
+                    else {
+                        width += 0.2;
+                    }
+                    elem.style.width = width + "%";
+                }
+            }
+        }
+    </script>
+
+    <!-- JavaScript Dependencies -->
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <!-- Common JavaScript for the entire app -->
+    <!-- <script>
+
+        // Load tenders for the selector on document ready
+        document.addEventListener('DOMContentLoaded', loadTenderSelector);
+        const urlPrefix = "{{ url_prefix }}";
+        // Updated tender selector loading function
+        async function loadTenderSelector() {
+            try {
+                const response = await fetch(urlPrefix + '/tenders');
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                
+                const data = await response.json();
+                const selector = document.getElementById('tenderSelector');
+                
+                if (data.tenders && data.tenders.length > 0) {
+                    let options = '<option value="">Select a tender...</option>';
+                    let currentTenderSelected = false;
+                    
+                    data.tenders.forEach(tender => {
+                        const isSelected = tender.is_active ? 'selected' : '';
+                        if (tender.is_active) {
+                            currentTenderSelected = true;
+                        }
+                        options += `<option value="${tender.id}" ${isSelected}>${tender.title} (${tender.created_at})</option>`;
+                    });
+                    
+                    selector.innerHTML = options;
+                    
+                    // If no tender is marked as active but we have tenders, select the first one
+                    if (!currentTenderSelected && data.tenders.length > 0) {
+                        selector.selectedIndex = 1; // First actual tender (index 0 is "Select a tender...")
+                    }
+                } else {
+                    selector.innerHTML = '<option value="">No tenders available</option>';
+                }
+            } catch (error) {
+                console.error('Error loading tenders:', error);
+                document.getElementById('tenderSelector').innerHTML = '<option value="">Error loading tenders</option>';
+            }
+        }
+        
+        async function switchTender(tenderId) {
+            if (!tenderId) return;
+            
+            try {
+                const response = await fetch(`${urlPrefix}/tenders/${tenderId}`, {
+                    method: 'GET'
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                }
+            } catch (error) {
+                console.error('Error switching tender:', error);
+                alert('Error switching tender. Please try again.');
+            }
+        }
+    </script> -->
+
+    <!-- This is the updated JavaScript section that should replace the existing script in your HTML -->
+
+    <script>
+        // Load tenders for the selector on document ready
+        document.addEventListener('DOMContentLoaded', loadTenderSelector);
+        const urlPrefix = "{{ url_prefix }}";
+        let allTenders = []; // Store all tenders from backend
+
+        // Load tenders from backend
+        async function loadTenderSelector() {
+            try {
+                const response = await fetch(urlPrefix + '/tenders');
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                // Store all tenders from backend
+                if (data.tenders && data.tenders.length > 0) {
+                    // Filter out tenders with source 'CPPP_Original' and 'MahaTender_Original'
+                    allTenders = data.tenders.filter(tender => {
+                        // Get the source value (handle null/undefined cases)
+                        const source = (tender.source || '').toString().trim();
+
+                        // Check if source is exactly 'CPPP_Original' or 'MahaTender_Original'
+                        // Using case-insensitive comparison to be safe
+                        const upperSource = source.toUpperCase();
+
+                        return upperSource !== 'CPPP_ORIGINAL' &&
+                            upperSource !== 'MAHATENDER_ORIGINAL';
+                    });
+
+                    console.log('Filtered tenders:', allTenders.length, 'out of', data.tenders.length);
+
+                    // Populate dropdown with filtered tenders
+                    populateDropdown('');
+                }
+                else {
+                    const dropdownMenu = document.getElementById('tenderDropdownMenu');
+                    dropdownMenu.innerHTML = '<div class="tender-option no-results">No tenders available</div>';
+                }
+            }
+            catch (error) {
+                console.error('Error loading tenders:', error);
+                const dropdownMenu = document.getElementById('tenderDropdownMenu');
+                dropdownMenu.innerHTML = '<div class="tender-option no-results">Error loading tenders</div>';
+            }
+        }
+        // Populate dropdown with filtered tenders
+        function populateDropdown(searchTerm = '') {
+            const dropdownMenu = document.getElementById('tenderDropdownMenu');
+            const searchInput = document.getElementById('tenderSearch');
+
+            dropdownMenu.innerHTML = '';
+
+            if (allTenders.length === 0) {
+                dropdownMenu.innerHTML = '<div class="tender-option no-results">No tenders available</div>';
+                return;
+            }
+
+            // Filter tenders based on search term
+            const filtered = allTenders.filter(tender => {
+                const searchText = `${tender.title} ${tender.created_at}`.toLowerCase();
+                return searchText.includes(searchTerm.toLowerCase());
+            });
+
+            if (filtered.length === 0) {
+                dropdownMenu.innerHTML = '<div class="tender-option no-results">No tenders found</div>';
+                return;
+            }
+
+            // Create option elements for each filtered tender
+            filtered.forEach(tender => {
+                const option = document.createElement('div');
+                option.className = 'tender-option';
+                option.setAttribute('data-value', tender.id);
+                option.setAttribute('data-text', `${tender.title} (${tender.created_at})`);
+                option.textContent = `${tender.title} (${tender.created_at})`;
+
+                // Highlight currently selected tender
+                const currentDisplay = searchInput.value;
+                if (currentDisplay === option.getAttribute('data-text')) {
+                    option.classList.add('selected');
+                }
+
+                // Add click handler to select tender
+                option.addEventListener('click', () => selectTender(tender));
+
+                dropdownMenu.appendChild(option);
+            });
+        }
+
+        // Select a tender and update UI
+        function selectTender(tender) {
+            const searchInput = document.getElementById('tenderSearch');
+            const dropdownMenu = document.getElementById('tenderDropdownMenu');
+
+            const displayText = `${tender.title} (${tender.created_at})`;
+            searchInput.value = displayText;
+            dropdownMenu.classList.remove('show');
+
+            // Switch to the selected tender
+            switchTender(tender.id);
+        }
+
+        // Get references to elements
+        const searchInput = document.getElementById('tenderSearch');
+        const dropdownMenu = document.getElementById('tenderDropdownMenu');
+
+        // Show full dropdown on focus (show all tenders, ignore current input value)
+        searchInput.addEventListener('focus', () => {
+            dropdownMenu.classList.add('show');
+            populateDropdown(''); // Always show all tenders on focus
+        });
+
+        // Filter dropdown on input while typing
+        searchInput.addEventListener('input', (e) => {
+            populateDropdown(e.target.value);
+            dropdownMenu.classList.add('show');
+        });
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', (e) => {
+            if (!e.target.closest('.tender-search-dropdown')) {
+                dropdownMenu.classList.remove('show');
+            }
+        });
+
+        // Switch tender - navigates to selected tender
+        async function switchTender(tenderId) {
+            if (!tenderId) return;
+
+            try {
+                const response = await fetch(`${urlPrefix}/tenders/${tenderId}`, {
+                    method: 'GET'
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+
+                const data = await response.json();
+
+                if (data.redirect) {
+                    window.location.href = data.redirect;
+                }
+            }
+            catch (error) {
+                console.error('Error switching tender:', error);
+                alert('Error switching tender. Please try again.');
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:16
+    container_name: tg_postgres
+    restart: always
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: rushabh
+      POSTGRES_DB: tender_analyzer
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d tender_analyzer"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  web:
+    build: .
+    image: tg
+    container_name: tender_gyan
+    restart: always
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - ENVIRONMENT=local
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=rushabh
+      - POSTGRES_DB=tender_analyzer
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - BRIGHTDATA_PROXY_ENABLED=true
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    shm_size: 2g
+    # deploy:
+    #   resources:
+    #     limits:
+    #       memory: 1G
+    #     reservations:
+    #       memory: 512M
+    command: >
+      bash -c "gunicorn -b 0.0.0.0:5000 --workers 4 --threads 6 --timeout 120 --max-requests 100 --max-requests-jitter 20 --graceful-timeout 30 --keep-alive 5 --reload app:app"
+
+    # For PRODUCTION (uncomment this and comment above):
+    # command: >
+    # bash -c "gunicorn -b 0.0.0.0:5000 --workers 2 --threads 2 --timeout 120 --max-requests 100 --max-requests-jitter 20 --graceful-timeout 30 --keep-alive 5 app:app"
+
+volumes:
+  postgres_data:

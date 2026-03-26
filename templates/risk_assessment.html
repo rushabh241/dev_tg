@@ -1,0 +1,478 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-1">
+    <div class="row mb-2">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h3>Tender Risk Assessment</h3>
+                <p class="text-muted">Analysis of potential risks based on tender documents and organizational
+                    constraints</p>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- Risk Summary Section -->
+    {% if risk_assessment %}
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Risk Assessment Summary</h5>
+
+                    <div class="row mt-0">
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-80 bg-light">
+                                <div class="card-body text-center">
+                                    <h6 class="card-subtitle mb-10 text-muted">Total Risks</h6>
+                                    <h2 class="card-title mb-0">{{ risk_assessment.total_risks }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100 border-danger">
+                                <div class="card-body text-center">
+                                    <h6 class="card-subtitle mb-10 text-muted">High Risk</h6>
+                                    <h2 class="card-title mb-0 text-danger">{{ risk_assessment.high_risks }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100 border-warning">
+                                <div class="card-body text-center">
+                                    <h6 class="card-subtitle mb-10 text-muted">Medium Risk</h6>
+                                    <h2 class="card-title mb-0 text-warning">{{ risk_assessment.medium_risks }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <div class="card h-100 border-success">
+                                <div class="card-body text-center">
+                                    <h6 class="card-subtitle mb-10 text-muted">Low Risk</h6>
+                                    <h2 class="card-title mb-0 text-success">{{ risk_assessment.low_risks }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Detailed Risk Assessment Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>Risk Analysis
+                        </h5>
+                        <button class="btn btn-primary" id="generateRisksButton" onclick="generateRisks()">
+                            <i class="fas fa-sync-alt me-2"></i>{% if risk_assessment %}Regenerate{% else %}Generate{%
+                            endif %} Risk Assessment
+                        </button>
+                    </div>
+
+                    <div id="riskLoadingIndicator" class="text-center my-5 d-none">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-3">Analyzing tender against organizational constraints...</p>
+                        <p class="text-muted small">This may take a minute, please wait</p>
+                    </div>
+
+                    {% if not risk_assessment %}
+                    <div id="noRisksMessage" class="text-center my-5">
+                        <i class="fas fa-tasks fa-3x mb-3 text-muted"></i>
+                        <p>No risk assessment generated yet</p>
+                        <p class="text-muted">Click "Generate Risk Assessment" to analyze the tender against your
+                            organizational constraints</p>
+                    </div>
+                    {% endif %}
+
+                    {% if risk_assessment %}
+                    <div id="riskAssessmentContainer">
+                        <ul class="nav nav-tabs" id="riskTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="financial-risks-tab" data-bs-toggle="tab"
+                                    data-bs-target="#financial-risks" type="button" role="tab">
+                                    <i class="fas fa-money-bill-wave me-2"></i>Financial
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="technical-risks-tab" data-bs-toggle="tab"
+                                    data-bs-target="#technical-risks" type="button" role="tab">
+                                    <i class="fas fa-wrench me-2"></i>Technical
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="legal-risks-tab" data-bs-toggle="tab"
+                                    data-bs-target="#legal-risks" type="button" role="tab">
+                                    <i class="fas fa-balance-scale me-2"></i>Legal
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="other-risks-tab" data-bs-toggle="tab"
+                                    data-bs-target="#other-risks" type="button" role="tab">
+                                    <i class="fas fa-th-list me-2"></i>Other
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content p-3 border border-top-0 rounded-bottom" id="riskTabContent">
+                            <!-- Financial Risks Tab -->
+                            <div class="tab-pane fade show active" id="financial-risks" role="tabpanel">
+                                <div id="financialRisks" class="risk-items">
+                                    {% set financial_risks = risk_assessment.risks|selectattr('category', 'equalto',
+                                    'financial')|list %}
+                                    {% if financial_risks %}
+                                    {% for risk in financial_risks %}
+                                    <div
+                                        class="card mb-3 border-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }}">
+                                        <div
+                                            class="card-header bg-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }} bg-opacity-10 d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">
+                                                <span
+                                                    class="badge bg-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }} me-2">
+                                                    {{ risk.severity|capitalize }}
+                                                </span>
+                                                {{ risk.title }}
+                                            </h6>
+                                            <div>
+                                                <button class="btn btn-sm btn-primary"
+                                                    onclick="toggleRiskDetails('financial', {{ loop.index0 }})">
+                                                    <i class="fas fa-chevron-down"
+                                                        id="financial-toggle-{{ loop.index0 }}"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-body d-none" id="financial-details-{{ loop.index0 }}">
+                                            <p>{{ risk.description }}</p>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Impact</h6>
+                                                    <p
+                                                        class="text-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }}">
+                                                        {{ risk.impact }}</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Mitigation</h6>
+                                                    <p>{{ risk.mitigation }}</p>
+                                                </div>
+                                            </div>
+
+                                            {% if risk.related_constraint %}
+                                            <div class="mt-3">
+                                                <h6 class="mb-2">Related Constraint</h6>
+                                                <div class="alert alert-secondary py-2">
+                                                    <i class="fas fa-exclamation-circle me-2"></i>{{
+                                                    risk.related_constraint }}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    {% else %}
+                                    <div class="text-center text-muted py-4">
+                                        <p>No financial risks identified</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Technical Risks Tab -->
+                            <div class="tab-pane fade" id="technical-risks" role="tabpanel">
+                                <div id="technicalRisks" class="risk-items">
+                                    {% set technical_risks = risk_assessment.risks|selectattr('category', 'equalto',
+                                    'technical')|list %}
+                                    {% if technical_risks %}
+                                    {% for risk in technical_risks %}
+                                    <div
+                                        class="card mb-3 border-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }}">
+                                        <div
+                                            class="card-header bg-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }} bg-opacity-10 d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">
+                                                <span
+                                                    class="badge bg-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }} me-2">
+                                                    {{ risk.severity|capitalize }}
+                                                </span>
+                                                {{ risk.title }}
+                                            </h6>
+                                            <div>
+                                                <button class="btn btn-sm btn-primary"
+                                                    onclick="toggleRiskDetails('technical', {{ loop.index0 }})">
+                                                    <i class="fas fa-chevron-down"
+                                                        id="technical-toggle-{{ loop.index0 }}"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-body d-none" id="technical-details-{{ loop.index0 }}">
+                                            <p>{{ risk.description }}</p>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Impact</h6>
+                                                    <p
+                                                        class="text-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }}">
+                                                        {{ risk.impact }}</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Mitigation</h6>
+                                                    <p>{{ risk.mitigation }}</p>
+                                                </div>
+                                            </div>
+
+                                            {% if risk.related_constraint %}
+                                            <div class="mt-3">
+                                                <h6 class="mb-2">Related Constraint</h6>
+                                                <div class="alert alert-secondary py-2">
+                                                    <i class="fas fa-exclamation-circle me-2"></i>{{
+                                                    risk.related_constraint }}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    {% else %}
+                                    <div class="text-center text-muted py-4">
+                                        <p>No technical risks identified</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Legal Risks Tab -->
+                            <div class="tab-pane fade" id="legal-risks" role="tabpanel">
+                                <div id="legalRisks" class="risk-items">
+                                    {% set legal_risks = risk_assessment.risks|selectattr('category', 'equalto',
+                                    'legal')|list %}
+                                    {% if legal_risks %}
+                                    {% for risk in legal_risks %}
+                                    <div
+                                        class="card mb-3 border-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }}">
+                                        <div
+                                            class="card-header bg-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }} bg-opacity-10 d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">
+                                                <span
+                                                    class="badge bg-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }} me-2">
+                                                    {{ risk.severity|capitalize }}
+                                                </span>
+                                                {{ risk.title }}
+                                            </h6>
+                                            <div>
+                                                <button class="btn btn-sm btn-primary"
+                                                    onclick="toggleRiskDetails('legal', {{ loop.index0 }})">
+                                                    <i class="fas fa-chevron-down"
+                                                        id="legal-toggle-{{ loop.index0 }}"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-body d-none" id="legal-details-{{ loop.index0 }}">
+                                            <p>{{ risk.description }}</p>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Impact</h6>
+                                                    <p
+                                                        class="text-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }}">
+                                                        {{ risk.impact }}</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Mitigation</h6>
+                                                    <p>{{ risk.mitigation }}</p>
+                                                </div>
+                                            </div>
+
+                                            {% if risk.related_constraint %}
+                                            <div class="mt-3">
+                                                <h6 class="mb-2">Related Constraint</h6>
+                                                <div class="alert alert-secondary py-2">
+                                                    <i class="fas fa-exclamation-circle me-2"></i>{{
+                                                    risk.related_constraint }}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    {% else %}
+                                    <div class="text-center text-muted py-4">
+                                        <p>No legal risks identified</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+
+                            <!-- Other Risks Tab -->
+                            <div class="tab-pane fade" id="other-risks" role="tabpanel">
+                                <div id="otherRisks" class="risk-items">
+                                    {% set other_risks = risk_assessment.risks|selectattr('category', 'equalto',
+                                    'other')|list %}
+                                    {% if other_risks %}
+                                    {% for risk in other_risks %}
+                                    <div
+                                        class="card mb-3 border-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }}">
+                                        <div
+                                            class="card-header bg-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }} bg-opacity-10 d-flex justify-content-between align-items-center">
+                                            <h6 class="mb-0">
+                                                <span
+                                                    class="badge bg-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }} me-2">
+                                                    {{ risk.severity|capitalize }}
+                                                </span>
+                                                {{ risk.title }}
+                                            </h6>
+                                            <div>
+                                                <button class="btn btn-sm btn-primary"
+                                                    onclick="toggleRiskDetails('other', {{ loop.index0 }})">
+                                                    <i class="fas fa-chevron-down"
+                                                        id="other-toggle-{{ loop.index0 }}"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                        <div class="card-body d-none" id="other-details-{{ loop.index0 }}">
+                                            <p>{{ risk.description }}</p>
+
+                                            <div class="row">
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Impact</h6>
+                                                    <p
+                                                        class="text-{{ 'danger' if risk.severity == 'high' else 'warning' if risk.severity == 'medium' else 'success' }}">
+                                                        {{ risk.impact }}</p>
+                                                </div>
+                                                <div class="col-md-6">
+                                                    <h6 class="mb-2">Mitigation</h6>
+                                                    <p>{{ risk.mitigation }}</p>
+                                                </div>
+                                            </div>
+
+                                            {% if risk.related_constraint %}
+                                            <div class="mt-3">
+                                                <h6 class="mb-2">Related Constraint</h6>
+                                                <div class="alert alert-secondary py-2">
+                                                    <i class="fas fa-exclamation-circle me-2"></i>{{
+                                                    risk.related_constraint }}
+                                                </div>
+                                            </div>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                    {% else %}
+                                    <div class="text-center text-muted py-4">
+                                        <p>No other risks identified</p>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Risk Export Actions -->
+    {% if risk_assessment %}
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-end">
+                <button id="exportRisksButton" class="btn btn-primary me-2" onclick="exportRisks()">
+                    <i class="fas fa-file-export me-2"></i>Export Risk Report
+                </button>
+                <button id="printRisksButton" class="btn btn-primary" onclick="window.print()">
+                    <i class="fas fa-print me-2"></i>Print Risk Report
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    function toggleRiskDetails(category, index) {
+        const detailsElement = document.getElementById(`${category}-details-${index}`);
+        const toggleIcon = document.getElementById(`${category}-toggle-${index}`);
+
+        if (detailsElement.classList.contains('d-none')) {
+            detailsElement.classList.remove('d-none');
+            toggleIcon.classList.remove('fa-chevron-down');
+            toggleIcon.classList.add('fa-chevron-up');
+        } else {
+            detailsElement.classList.add('d-none');
+            toggleIcon.classList.remove('fa-chevron-up');
+            toggleIcon.classList.add('fa-chevron-down');
+        }
+    }
+
+    async function generateRisks() {
+        // Show loading indicator
+        document.getElementById('riskLoadingIndicator').classList.remove('d-none');
+
+        {% if not risk_assessment %}
+        document.getElementById('noRisksMessage').classList.add('d-none');
+        {% endif %}
+
+        try {
+            const urlPrefix = "{{ url_prefix }}";
+            const response = await fetch(`${urlPrefix}/generate-risks`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate risk assessment');
+            }
+
+            // Reload the page to show new assessment
+            window.location.reload();
+        } catch (error) {
+            console.error('Error generating risks:', error);
+            showAlert('danger', 'Failed to generate risk assessment. Please try again.');
+
+            // Show no risks message again if needed
+            {% if not risk_assessment %}
+            document.getElementById('noRisksMessage').classList.remove('d-none');
+            {% endif %}
+        } finally {
+            // Hide loading indicator
+            document.getElementById('riskLoadingIndicator').classList.add('d-none');
+        }
+    }
+
+    async function exportRisks() {
+        try {
+            window.location.href = "{{ url_for('export_risk_report_pdf') }}";
+        } catch (error) {
+            console.error('Error exporting risks:', error);
+            showAlert('danger', 'Failed to export risk report. Please try again.');
+        }
+    }
+
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        // Insert before the first card
+        const firstCard = document.querySelector('.card');
+        firstCard.parentNode.insertBefore(alertDiv, firstCard);
+
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 500);
+        }, 5000);
+    }
+</script>
+{% endblock %}

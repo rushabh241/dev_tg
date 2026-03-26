@@ -1,0 +1,1169 @@
+{% extends "admin.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  {% if mode == 'list' %}
+  <!-- ========== LIST ORGANIZATIONS ========== -->
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Organizations</h5>
+      <div>
+        <a href="{{ url_for('add_organization') }}" class="btn btn-primary btn-sm">
+          <i class="fas fa-plus-circle me-1"></i> Add Organization
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      <table class="table table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for org in organizations %}
+          <tr>
+            <td>{{ org.id }}</td>
+            <td>{{ org.name }}</td>
+            <td>{{ org.description or '-' }}</td>
+            <td>{{ org.created_at.strftime('%Y-%m-%d') if org.created_at else '-' }}</td>
+            <td>
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('manage_organization', org_id=org.id) }}">
+                Manage
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted">No organizations found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% elif mode == 'add' %}
+  <!-- ========== ADD ORGANIZATION (COMPLETE) ========== -->
+<div class="container mt-4 mb-5">
+    <h3 class="mb-3">Add New Organization</h3>
+    <a href="{{ url_for('organization') }}" class="btn btn-sm btn-secondary mb-3">← Back</a>
+
+    <form method="POST" action="{{ url_for('add_organization') }}">
+        <!-- Organization -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header">
+                <h5 class="mb-0">Organization Details</h5>
+            </div>
+            <div class="card-body">
+                <div class="mb-3">
+                    <label class="form-label">Organization Name <span class="text-danger">*</span></label>
+                    <input type="text" name="org_name" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description</label>
+                    <textarea name="org_description" class="form-control" rows="3"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Users <span class="text-danger">* (At least one admin required)</span></h5>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#userModal">
+                    Add User
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="users-table">
+                    <p class="text-muted">No users added yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Service Product Definitions -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Service/Product Definitions</h5>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#serviceModal">
+                    Add Definition
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="services-table">
+                    <p class="text-muted">No service/product definitions added yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Constraints -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Constraints</h5>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#constraintModal">
+                    Add Constraint
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="constraints-table">
+                    <p class="text-muted">No constraints added yet</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Search Configurations -->
+        <div class="card shadow-sm mb-4">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">Search Configurations</h5>
+                <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#searchConfigModal">
+                    Add Search Config
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="search-configs-table">
+                    <p class="text-muted">No search configurations added yet</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success">Create Organization</button>
+            <a href="{{ url_for('organization') }}" class="btn btn-secondary">Cancel</a>
+        </div>
+    </form>
+</div>
+
+<!-- User Modal -->
+<div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Username</label>
+                    <input type="text" id="username" class="form-control" placeholder="Optional">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Email <span class="text-danger">*</span></label>
+                    <input type="email" id="email" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Password <span class="text-danger">*</span></label>
+                    <input type="text" id="password" class="form-control" required>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Role</label>
+                    <select id="role" class="form-select">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveUser()">Add User</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Service Modal -->
+<div class="modal fade" id="serviceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Service/Product Definition</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Definition <span class="text-danger">*</span></label>
+                    <textarea id="service_definition" class="form-control" rows="4" placeholder="Enter service/product definition..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveService()">Add Definition</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Constraint Modal -->
+<div class="modal fade" id="constraintModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Constraint</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Category</label>
+                    <select id="constraint_category" class="form-select">
+                        <option value="">Select category...</option>
+                        <option value="financial">Financial</option>
+                        <option value="technical">Technical</option>
+                        <option value="legal">Legal</option>
+                        <option value="other">Other</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Description <span class="text-danger">*</span></label>
+                    <textarea id="constraint_description" class="form-control" rows="3" placeholder="Description..." required></textarea>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveConstraint()">Add Constraint</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Search Configuration Modal -->
+<div class="modal fade" id="searchConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add Search Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label">Search Keyword <span class="text-danger">*</span></label>
+                    <input type="text" id="sc_keyword" class="form-control" required>
+                </div>
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <label class="form-label">Max Tenders</label>
+                        <input type="number" id="sc_max" class="form-control" value="10" min="1">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Execution Time</label>
+                        <input type="time" id="sc_time" class="form-control" value="09:00">
+                    </div>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Status</label>
+                    <select id="sc_active" class="form-select">
+                        <option value="1">Active</option>
+                        <option value="0">Inactive</option>
+                    </select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Notification Recipients</label>
+                    <div id="recipients-container">
+                        <div class="recipient-row mb-2">
+                            <div class="row">
+                                <div class="col-md-5">
+                                    <input type="text" class="form-control recipient-name" placeholder="Name">
+                                </div>
+                                <div class="col-md-5">
+                                    <input type="email" class="form-control recipient-email" placeholder="Email">
+                                </div>
+                                <div class="col-md-2">
+                                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRecipient(this)">×</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary mt-2" onclick="addRecipient()">
+                        Add Recipient
+                    </button>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveSearchConfig()">Add Configuration</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let users = [];
+    let services = [];
+    let constraints = [];
+    let searchConfigs = [];
+
+    // Users functionality
+    function saveUser() {
+        const username = document.getElementById('username').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value.trim();
+        const role = document.getElementById('role').value;
+
+        if (!email || !password) {
+            alert('Email and password are required');
+            return;
+        }
+
+        users.push({ username, email, password, role });
+        updateUsersTable();
+
+        // Clear modal
+        document.getElementById('username').value = '';
+        document.getElementById('email').value = '';
+        document.getElementById('password').value = '';
+        document.getElementById('role').value = 'user';
+
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+    }
+
+    function updateUsersTable() {
+        const container = document.getElementById('users-table');
+
+        if (users.length === 0) {
+            container.innerHTML = '<p class="text-muted">No users added yet</p>';
+            return;
+        }
+
+        let html = `
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Role</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        users.forEach((user, index) => {
+            html += `
+                <tr>
+                    <td>${user.username || '(No username)'}</td>
+                    <td>${user.email}</td>
+                    <td><span class="badge ${user.role === 'admin' ? 'bg-primary' : 'bg-secondary'}">${user.role}</span></td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeUser(${index})">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+
+        // Update hidden inputs for users
+        updateHiddenInputs();
+    }
+
+    function removeUser(index) {
+        if (confirm('Remove this user?')) {
+            users.splice(index, 1);
+            updateUsersTable();
+        }
+    }
+
+    // Services functionality
+    function saveService() {
+        const definition = document.getElementById('service_definition').value.trim();
+
+        if (!definition) {
+            alert('Definition is required');
+            return;
+        }
+
+        services.push(definition);
+        updateServicesTable();
+
+        // Clear modal
+        document.getElementById('service_definition').value = '';
+
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('serviceModal')).hide();
+    }
+
+    function updateServicesTable() {
+        const container = document.getElementById('services-table');
+
+        if (services.length === 0) {
+            container.innerHTML = '<p class="text-muted">No service/product definitions added yet</p>';
+            return;
+        }
+
+        let html = `
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Definition</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        services.forEach((definition, index) => {
+            const truncated = definition.length > 100 ? definition.substring(0, 100) + '...' : definition;
+            html += `
+                <tr>
+                    <td>${truncated}</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeService(${index})">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function removeService(index) {
+        if (confirm('Remove this service/product definition?')) {
+            services.splice(index, 1);
+            updateServicesTable();
+        }
+    }
+
+    // Constraints functionality
+function saveConstraint() {
+    const category = document.getElementById('constraint_category').value;
+    const description = document.getElementById('constraint_description').value.trim();
+
+    if (!description) {
+        alert('Description is required');
+        return;
+    }
+
+    constraints.push({ category, description });
+    updateConstraintsTable();
+
+    // Clear modal
+    document.getElementById('constraint_category').value = '';
+    document.getElementById('constraint_description').value = '';
+
+    // Close modal
+    bootstrap.Modal.getInstance(document.getElementById('constraintModal')).hide();
+}
+
+function updateConstraintsTable() {
+    const container = document.getElementById('constraints-table');
+
+    if (constraints.length === 0) {
+        container.innerHTML = '<p class="text-muted">No constraints added yet</p>';
+        return;
+    }
+
+    let html = `
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th>Description</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+    constraints.forEach((constraint, index) => {
+        const truncatedDesc = constraint.description.length > 80 ? constraint.description.substring(0, 80) + '...' : constraint.description;
+        const categoryBadge = constraint.category ? 
+            `<span class="badge bg-info">${constraint.category}</span>` : 
+            '<span class="badge bg-secondary">No category</span>';
+        
+        html += `
+            <tr>
+                <td>${categoryBadge}</td>
+                <td>${truncatedDesc}</td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeConstraint(${index})">
+                        Remove
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    html += '</tbody></table>';
+    container.innerHTML = html;
+}
+
+function removeConstraint(index) {
+    if (confirm('Remove this constraint?')) {
+        constraints.splice(index, 1);
+        updateConstraintsTable();
+    }
+}
+    
+    // Search Configurations functionality
+    function addRecipient() {
+        const container = document.getElementById('recipients-container');
+        const newRow = document.createElement('div');
+        newRow.className = 'recipient-row mb-2';
+        newRow.innerHTML = `
+            <div class="row">
+                <div class="col-md-5">
+                    <input type="text" class="form-control recipient-name" placeholder="Name">
+                </div>
+                <div class="col-md-5">
+                    <input type="email" class="form-control recipient-email" placeholder="Email">
+                </div>
+                <div class="col-md-2">
+                    <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRecipient(this)">×</button>
+                </div>
+            </div>
+        `;
+        container.appendChild(newRow);
+    }
+
+    function removeRecipient(button) {
+        const container = document.getElementById('recipients-container');
+        if (container.children.length > 1) {
+            button.closest('.recipient-row').remove();
+        }
+    }
+
+    function saveSearchConfig() {
+        const keyword = document.getElementById('sc_keyword').value.trim();
+        const maxTenders = document.getElementById('sc_max').value;
+        const executionTime = document.getElementById('sc_time').value;
+        const isActive = document.getElementById('sc_active').value;
+
+        if (!keyword) {
+            alert('Search keyword is required');
+            return;
+        }
+
+        // Collect recipients
+        const recipients = [];
+        const recipientRows = document.querySelectorAll('.recipient-row');
+        recipientRows.forEach(row => {
+            const name = row.querySelector('.recipient-name').value.trim();
+            const email = row.querySelector('.recipient-email').value.trim();
+            if (name && email) {
+                recipients.push({ name, email });
+            }
+        });
+
+        searchConfigs.push({
+            keyword,
+            maxTenders,
+            executionTime,
+            isActive,
+            recipients
+        });
+
+        updateSearchConfigsTable();
+
+        // Clear modal
+        document.getElementById('sc_keyword').value = '';
+        document.getElementById('sc_max').value = '10';
+        document.getElementById('sc_time').value = '09:00';
+        document.getElementById('sc_active').value = '1';
+        
+        // Clear recipients (keep one empty row)
+        const recipientsContainer = document.getElementById('recipients-container');
+        recipientsContainer.innerHTML = `
+            <div class="recipient-row mb-2">
+                <div class="row">
+                    <div class="col-md-5">
+                        <input type="text" class="form-control recipient-name" placeholder="Name">
+                    </div>
+                    <div class="col-md-5">
+                        <input type="email" class="form-control recipient-email" placeholder="Email">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeRecipient(this)">×</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        // Close modal
+        bootstrap.Modal.getInstance(document.getElementById('searchConfigModal')).hide();
+    }
+
+    function updateSearchConfigsTable() {
+        const container = document.getElementById('search-configs-table');
+
+        if (searchConfigs.length === 0) {
+            container.innerHTML = '<p class="text-muted">No search configurations added yet</p>';
+            return;
+        }
+
+        let html = `
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Keyword</th>
+                        <th>Max Tenders</th>
+                        <th>Execution Time</th>
+                        <th>Status</th>
+                        <th>Recipients</th>
+                        <th>Action</th>
+                    </tr>
+                </thead>
+                <tbody>
+        `;
+
+        searchConfigs.forEach((config, index) => {
+            html += `
+                <tr>
+                    <td>${config.keyword}</td>
+                    <td>${config.maxTenders}</td>
+                    <td>${config.executionTime}</td>
+                    <td><span class="badge ${config.isActive === '1' ? 'bg-success' : 'bg-secondary'}">${config.isActive === '1' ? 'Active' : 'Inactive'}</span></td>
+                    <td>${config.recipients.length} recipient(s)</td>
+                    <td>
+                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeSearchConfig(${index})">
+                            Remove
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+    }
+
+    function removeSearchConfig(index) {
+        if (confirm('Remove this search configuration?')) {
+            searchConfigs.splice(index, 1);
+            updateSearchConfigsTable();
+        }
+    }
+
+    // Update all hidden inputs before form submission
+    function updateHiddenInputs() {
+        const form = document.querySelector('form');
+        
+        // Remove all existing hidden inputs
+        const oldInputs = form.querySelectorAll('input[type="hidden"]');
+        oldInputs.forEach(input => input.remove());
+        
+        // Add Users hidden inputs
+        users.forEach((user, index) => {
+            const fields = [
+                { name: `users_username[]`, value: user.username },
+                { name: `users_email[]`, value: user.email },
+                { name: `users_password[]`, value: user.password },
+                { name: `users_role[]`, value: user.role }
+            ];
+            
+            fields.forEach(field => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = field.name;
+                input.value = field.value;
+                form.appendChild(input);
+            });
+        });
+        
+        // Add Services hidden inputs
+        services.forEach((definition, index) => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = `services[]`;
+            input.value = definition;
+            form.appendChild(input);
+        });
+        
+        // Add Constraints hidden inputs
+        constraints.forEach((constraint, index) => {
+            const categoryInput = document.createElement('input');
+            categoryInput.type = 'hidden';
+            categoryInput.name = `constraint_category[]`;
+            categoryInput.value = constraint.category || '';
+            form.appendChild(categoryInput);
+            
+            const descInput = document.createElement('input');
+            descInput.type = 'hidden';
+            descInput.name = `constraint_description[]`;
+            descInput.value = constraint.description;
+            form.appendChild(descInput);
+        });
+        
+        // Add Search Configurations hidden inputs
+        searchConfigs.forEach((config, index) => {
+            const fields = [
+                { name: `sc_keyword[]`, value: config.keyword },
+                { name: `sc_max[]`, value: config.maxTenders },
+                { name: `sc_time[]`, value: config.executionTime },
+                { name: `sc_active[]`, value: config.isActive }
+            ];
+            
+            fields.forEach(field => {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = field.name;
+                input.value = field.value;
+                form.appendChild(input);
+            });
+            
+            // Add recipients as URI-encoded JSON
+            if (config.recipients && config.recipients.length > 0) {
+                const recipientsJson = JSON.stringify(config.recipients);
+                const encodedRecipients = encodeURIComponent(recipientsJson);
+                const recipientsInput = document.createElement('input');
+                recipientsInput.type = 'hidden';
+                recipientsInput.name = `sc_recipients_json[]`;
+                recipientsInput.value = encodedRecipients;
+                form.appendChild(recipientsInput);
+            } else {
+                // Add empty recipients
+                const recipientsInput = document.createElement('input');
+                recipientsInput.type = 'hidden';
+                recipientsInput.name = `sc_recipients_json[]`;
+                recipientsInput.value = '';
+                form.appendChild(recipientsInput);
+            }
+        });
+    }
+    
+    // Update hidden inputs whenever any table is updated
+    function updateAllTables() {
+        updateUsersTable();
+        updateServicesTable();
+        updateConstraintsTable();
+        updateSearchConfigsTable();
+        updateHiddenInputs();
+    }
+    
+    // Initialize with updateAllTables instead of individual functions
+    document.addEventListener('DOMContentLoaded', function() {
+        // Modify all save functions to call updateAllTables
+        const originalSaveUser = saveUser;
+        saveUser = function() {
+            originalSaveUser();
+            updateAllTables();
+        };
+        
+        const originalSaveService = saveService;
+        saveService = function() {
+            originalSaveService();
+            updateAllTables();
+        };
+        
+        const originalSaveConstraint = saveConstraint;
+        saveConstraint = function() {
+            originalSaveConstraint();
+            updateAllTables();
+        };
+        
+        const originalSaveSearchConfig = saveSearchConfig;
+        saveSearchConfig = function() {
+            originalSaveSearchConfig();
+            updateAllTables();
+        };
+        
+        // Also modify remove functions
+        const originalRemoveUser = removeUser;
+        removeUser = function(index) {
+            originalRemoveUser(index);
+            updateAllTables();
+        };
+        
+        const originalRemoveService = removeService;
+        removeService = function(index) {
+            originalRemoveService(index);
+            updateAllTables();
+        };
+        
+        const originalRemoveConstraint = removeConstraint;
+        removeConstraint = function(index) {
+            originalRemoveConstraint(index);
+            updateAllTables();
+        };
+        
+        const originalRemoveSearchConfig = removeSearchConfig;
+        removeSearchConfig = function(index) {
+            originalRemoveSearchConfig(index);
+            updateAllTables();
+        };
+        
+        // Initialize hidden inputs
+        updateHiddenInputs();
+    });
+</script>
+
+  {% elif mode == 'manage' %}
+  <!-- ========== MANAGE SINGLE ORGANIZATION ========== -->
+<div class="container mt-4 mb-5">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h3 class="mb-0">
+      Manage Organization — <span class="text-primary" id="orgNameDisplay">{{ organization.name }}</span>
+    </h3>
+    <a href="{{ url_for('organization') }}" class="btn btn-outline-secondary btn-sm">← Back to Organizations</a>
+  </div>
+
+  <!-- Organization Details Card -->
+  <div class="card shadow-sm mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Organization Details</h5>
+      <button type="button" class="btn btn-sm btn-outline-primary" id="editOrgBtn">
+        <i class="bi bi-pencil"></i> Edit
+      </button>
+    </div>
+    <div class="card-body">
+      <form id="orgForm" method="POST" action="">
+        <input type="hidden" name="form_type" value="edit_organization">
+        <div class="row">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label">Organization Name</label>
+              <input type="text" id="orgNameInput" name="org_name" class="form-control" 
+                     value="{{ organization.name }}" required disabled>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label class="form-label">Created On</label>
+              <p class="form-control-plaintext">{{ organization.created_at.strftime('%Y-%m-%d') if organization.created_at else 'N/A' }}</p>
+            </div>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Description</label>
+          <textarea id="orgDescInput" name="org_description" class="form-control" rows="3" 
+                    disabled>{{ organization.description or '' }}</textarea>
+        </div>
+        <div id="orgFormButtons" style="display: none;">
+          <button type="button" class="btn btn-secondary" id="cancelOrgEdit">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Users Card -->
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Users</h5>
+      <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">
+        <i class="bi bi-person-plus"></i> Add User
+      </button>
+    </div>
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table table-hover">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Role</th>
+              <th>Created</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for user in users %}
+            <tr>
+              <td>{{ user.id }}</td>
+              <td>
+                <div class="d-flex align-items-center">
+                  {{ user.username }}
+                </div>
+              </td>
+              <td>{{ user.email or '-' }}</td>
+              <td>
+                <span class="badge {% if user.role == 'admin' %}bg-primary{% else %}bg-secondary{% endif %}">
+                  {{ user.role }}
+                </span>
+              </td>
+              <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</td>
+              <td>
+                <div class="btn-group btn-group-sm" role="group">
+                  <button type="button" class="btn btn-outline-primary edit-user-btn" 
+                          data-user-id="{{ user.id }}"
+                          data-username="{{ user.username }}" 
+                          data-email="{{ user.email }}" 
+                          data-role="{{ user.role }}">
+                    <i class="bi bi-pencil"></i>
+                  </button>
+                  <button type="button" class="btn btn-outline-danger delete-user-btn" 
+                          data-user-id="{{ user.id }}">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </td>
+            </tr>
+            {% else %}
+            <tr>
+              <td colspan="6" class="text-center text-muted py-4">
+                <i class="bi bi-people display-6 mb-3 d-block"></i>
+                No users found. Click "Add User" to add users to this organization.
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Add User Modal -->
+<div class="modal fade" id="addUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Add User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="">
+        <input type="hidden" name="form_type" value="add_user">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" name="username" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="text" name="password" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Role</label>
+            <select name="role" class="form-select">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Edit User Modal -->
+<div class="modal fade" id="editUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Edit User</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="" id="editUserForm">
+        <input type="hidden" name="form_type" value="edit_user">
+        <input type="hidden" name="user_id" id="editUserId">
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" name="username" id="editUsername" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" name="email" id="editEmail" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">New Password (leave blank to keep current)</label>
+            <input type="text" name="password" class="form-control" placeholder="Enter new password">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Role</label>
+            <select name="role" id="editRole" class="form-select">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Delete User Modal -->
+<div class="modal fade" id="deleteUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">Confirm Delete</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <form method="POST" action="" id="deleteUserForm">
+        <input type="hidden" name="form_type" value="delete_user">
+        <input type="hidden" name="user_id" id="deleteUserId">
+        <div class="modal-body">
+          <p>Are you sure you want to delete user "<span id="deleteUserName" class="fw-bold"></span>"?</p>
+          <p class="text-danger">This action cannot be undone.</p>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="submit" class="btn btn-danger">Delete User</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Organization edit functionality
+  const editOrgBtn = document.getElementById('editOrgBtn');
+  const cancelOrgEditBtn = document.getElementById('cancelOrgEdit');
+  const orgNameInput = document.getElementById('orgNameInput');
+  const orgDescInput = document.getElementById('orgDescInput');
+  const orgFormButtons = document.getElementById('orgFormButtons');
+  const orgNameDisplay = document.getElementById('orgNameDisplay');
+  
+  if (editOrgBtn) {
+    editOrgBtn.addEventListener('click', function() {
+      // Enable editing
+      orgNameInput.disabled = false;
+      orgDescInput.disabled = false;
+      orgFormButtons.style.display = 'block';
+      editOrgBtn.style.display = 'none';
+      
+      // Focus on name field
+      orgNameInput.focus();
+    });
+  }
+  
+  if (cancelOrgEditBtn) {
+    cancelOrgEditBtn.addEventListener('click', function() {
+      // Reset to original values
+      orgNameInput.value = "{{ organization.name }}";
+      orgDescInput.value = "{{ organization.description or '' }}";
+      
+      // Disable editing
+      orgNameInput.disabled = true;
+      orgDescInput.disabled = true;
+      orgFormButtons.style.display = 'none';
+      editOrgBtn.style.display = 'block';
+    });
+  }
+  
+  // Organization form submission
+  const orgForm = document.getElementById('orgForm');
+  if (orgForm) {
+    orgForm.addEventListener('submit', function(e) {
+      e.preventDefault();
+      
+      // Update the display name
+      orgNameDisplay.textContent = orgNameInput.value;
+      
+      // Disable fields after submission
+      orgNameInput.disabled = true;
+      orgDescInput.disabled = true;
+      orgFormButtons.style.display = 'none';
+      editOrgBtn.style.display = 'block';
+      
+      // Submit the form
+      this.submit();
+    });
+  }
+  
+  // Edit User Modal
+  const editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+  
+  document.querySelectorAll('.edit-user-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const userId = this.getAttribute('data-user-id');
+      const username = this.getAttribute('data-username');
+      const email = this.getAttribute('data-email');
+      const role = this.getAttribute('data-role');
+      
+      document.getElementById('editUserId').value = userId;
+      document.getElementById('editUsername').value = username;
+      document.getElementById('editEmail').value = email || '';
+      document.getElementById('editRole').value = role;
+      
+      editUserModal.show();
+    });
+  });
+  
+  // Delete User Modal
+  const deleteUserModal = new bootstrap.Modal(document.getElementById('deleteUserModal'));
+  
+  document.querySelectorAll('.delete-user-btn').forEach(button => {
+    button.addEventListener('click', function() {
+      const userId = this.getAttribute('data-user-id');
+      const username = this.closest('tr').querySelector('td:nth-child(2)').textContent.trim();
+      
+      document.getElementById('deleteUserId').value = userId;
+      document.getElementById('deleteUserName').textContent = username;
+      
+      deleteUserModal.show();
+    });
+  });
+  
+  // Set form actions to current URL (same page)
+  const forms = document.querySelectorAll('form');
+  forms.forEach(form => {
+    form.action = window.location.href;
+  });
+});
+</script>
+
+<style>
+.badge {
+  font-size: 0.85em;
+  padding: 0.4em 0.8em;
+}
+
+.table th {
+  background-color: #f8f9fa;
+  border-top: none;
+}
+
+.btn-group-sm .btn {
+  padding: 0.25rem 0.5rem;
+}
+
+.form-control:disabled {
+  background-color: #f8f9fa;
+  border-color: #dee2e6;
+}
+
+.form-control-plaintext {
+  min-height: calc(1.5em + 0.75rem + 2px);
+  padding: 0.375rem 0.75rem;
+}
+</style>
+
+  {% endif %}
+</div>
+
+<!-- Common JavaScript -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Simple back button functionality
+    const backButton = document.querySelector('a[href*="organization"]');
+    if (backButton) {
+      backButton.addEventListener('click', function (e) {
+        // If we're in add mode with unsaved services, confirm before leaving
+        const servicesList = document.getElementById('servicesList');
+        if (servicesList && servicesList.children.length > 1) {
+          if (!confirm('You have unsaved services. Are you sure you want to leave?')) {
+            e.preventDefault();
+          }
+        }
+      });
+    }
+  });
+</script>
+
+{% endblock %}

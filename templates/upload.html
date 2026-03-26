@@ -1,0 +1,173 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-1">
+    <div class="row mb-2">
+        <div class="col-10">
+            <h3>Tender Document Upload</h3>
+            <p class="text-muted">Upload your tender document to extract key information and enable AI-powered analysis.</p>
+        </div>
+    </div>
+    
+    <!-- Upload Section -->
+    <div class="row justify-content-center">
+        <div class="col-md-10">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-file-upload me-2"></i>Upload Tender Document
+                    </h5>
+                    <form id="uploadForm" enctype="multipart/form-data">
+                        <div class="mb-4">
+                            <label for="fileInput" class="form-label">Choose tender documents (PDF or TXT)</label>
+                            <input type="file" class="form-control" id="fileInput" name="file" accept=".pdf,.txt" multiple required>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Currently supporting PDF and TXT files. You can select multiple files.
+                            </div>
+                            <div class="form-text mt-2">
+                                <i class="fas fa-lightbulb me-1 text-warning"></i>
+                                <strong>Tip:</strong> The first file will be used to extract the tender overview.
+                            </div>
+                        </div>
+                        <div id="selectedFiles" class="mb-3">
+                            <!-- Selected files will be displayed here -->
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" onclick="uploadFiles()">
+                            <i class="fas fa-upload me-2"></i>Upload and Analyze
+                        </button>
+                        <div id="uploadStatus" class="mt-3 text-center"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Information Card -->
+    <div class="row mt-4 justify-content-center">
+        <div class="col-md-10">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">How It Works</h5>
+                    <ol class="mt-2" style="font-size: 0.7rem;">
+                        <li class="mb-1">Upload your tender documents using the form above</li>
+                        <li class="mb-1">The system extracts key information automatically from the first document</li>
+                        <li class="mb-1">View the tender overview with important dates and criteria</li>
+                        <li class="mb-1">Ask questions about specific requirements in the Q&A section</li>
+                    </ol>
+                   </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // Update the file list when files are selected
+    document.getElementById('fileInput').addEventListener('change', function(e) {
+        const selectedFiles = document.getElementById('selectedFiles');
+        const files = e.target.files;
+        
+        if (files.length > 0) {
+            let fileListHTML = '<div class="card mb-3"><div class="card-header bg-light"><strong>Selected Files</strong></div><ul class="list-group list-group-flush">';
+            
+            for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const fileIcon = file.name.toLowerCase().endsWith('.pdf') ? 'fa-file-pdf' : 'fa-file-alt';
+                const fileSize = (file.size / 1024).toFixed(2) + ' KB';
+                
+                fileListHTML += `
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <div>
+                            <i class="fas ${fileIcon} me-2 ${i === 0 ? 'text-primary' : 'text-secondary'}"></i>
+                            ${file.name} ${i === 0 ? '<span class="badge bg-primary ms-2">Main Document</span>' : ''}
+                        </div>
+                        <span class="text-muted small">${fileSize}</span>
+                    </li>
+                `;
+            }
+            
+            fileListHTML += '</ul></div>';
+            selectedFiles.innerHTML = fileListHTML;
+        } else {
+            selectedFiles.innerHTML = '';
+        }
+    });
+
+    async function uploadFiles() {
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+        console.log("Upload Status Element:", uploadStatus);
+
+        if (!fileInput.files.length) {
+            uploadStatus.innerHTML = '<div class="alert alert-danger">Please select at least one file to upload.</div>';
+            return;
+        }
+
+        const formData = new FormData();
+        
+        // Add all selected files to the form data
+        for (let i = 0; i < fileInput.files.length; i++) {
+            formData.append('file', fileInput.files[i]);
+        }
+
+        uploadStatus.innerHTML = '<div class="d-flex justify-content-center align-items-center">' +
+                                 '<div class="spinner-border text-primary me-2" role="status"></div>' +
+                                 '<span>Uploading and analyzing ' + (fileInput.files.length > 1 ? 'documents' : 'document') + '...</span>' +
+                                 '</div>';
+
+        try {
+			const urlPrefix = "{{ url_prefix }}";
+			const response = await fetch(`${urlPrefix}/upload-document`, {
+			method: 'POST',
+			body: formData,
+			credentials: 'include' 
+			});
+
+            const data = await response.json();
+            console.log("Upload response:", data);
+
+            if (response.ok) {
+                console.log("Upload successful:", data);
+                uploadStatus.innerHTML = `<div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>${data.message}
+                </div>`;
+                
+                // If there were any errors with specific files, show them
+                if (data.errors && data.errors.length > 0) {
+                    let errorHtml = '<div class="alert alert-warning mt-2"><strong>Warnings:</strong><ul class="mb-0 mt-2">';
+                    data.errors.forEach(error => {
+                        errorHtml += `<li>${error}</li>`;
+                    });
+                    errorHtml += '</ul></div>';
+                    uploadStatus.innerHTML += errorHtml;
+                }
+                
+                // Redirect to overview page after successful upload
+                setTimeout(() => {
+                    window.location.href = data.redirect;
+                }, 1500);
+                
+            } else {
+                console.log("Upload failed:", data);
+                uploadStatus.innerHTML = `<div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>${data.error}
+                </div>`;
+                
+                // If there were specific errors, show them
+                if (data.errors && data.errors.length > 0) {
+                    let errorHtml = '<div class="mt-2"><ul class="text-danger">';
+                    data.errors.forEach(error => {
+                        errorHtml += `<li>${error}</li>`;
+                    });
+                    errorHtml += '</ul></div>';
+                    uploadStatus.innerHTML += errorHtml;
+                }
+            }
+        } catch (error) {
+            uploadStatus.innerHTML = '<div class="alert alert-danger">Error uploading files. Please try again.</div>';
+            console.error('Upload error:', error);
+        }
+    }
+</script>
+{% endblock %}

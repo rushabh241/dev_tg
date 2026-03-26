@@ -1,0 +1,212 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-1">
+    <div class="row mb-2">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h3>Tender Q&A</h3>
+                <p class="text-muted">Ask questions about the tender document and get instant answers</p>
+            </div>
+            
+        </div>
+    </div>
+    
+    <!-- Removed Key Information Summary Section -->
+    
+    <!-- Chat Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-question-circle me-2"></i>Ask Questions About The Tender
+                    </h5>
+                    
+                    <div class="chat-messages border rounded p-3 mt-4" id="chatMessages" style="height: 400px; overflow-y: auto; background-color: #f8f9fa;">
+                        <div class="text-center text-muted my-5">
+                            <i class="fas fa-robot fa-3x mb-3"></i>
+                            <p>Ask a question about the tender document to get started.</p>
+                            <div class="row mt-4">
+                                <div class="col-md-8 mx-auto">
+                                    <div class="card bg-light">
+                                        <div class="card-body py-2 px-3">
+                                            <p class="small text-muted mb-1">Try asking questions like:</p>
+                                            <ul class="small mb-0">
+                                                <li>What are the eligibility criteria for this tender?</li>
+                                                <li>What documents need to be submitted with the bid?</li>
+                                                <li>Are there any pre-bid meeting requirements?</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="input-group mt-3">
+                        <input type="text" id="messageInput" class="form-control" placeholder="Type your question about the tender..." onkeypress="handleKeyPress(event)">
+                        <button class="btn btn-primary" onclick="sendMessage()">
+                            <i class="fas fa-paper-plane me-1"></i> Send
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Suggested Questions Section -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Common Questions</h5>
+                    <div class="row mt-3">
+                        <div class="col-md-4 mb-2">
+                            <button class="btn btn-primary w-100 text-start" onclick="fillQuestion('What are the payment terms mentioned in the tender?')">
+                                Payment Terms
+                            </button>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <button class="btn btn-primary w-100 text-start" onclick="fillQuestion('What is the performance security amount required?')">
+                                Performance Security
+                            </button>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <button class="btn btn-primary w-100 text-start" onclick="fillQuestion('What are the technical specifications required?')">
+                                Technical Specifications
+                            </button>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <button class="btn btn-primary w-100 text-start" onclick="fillQuestion('Is there a site visit requirement?')">
+                                Site Visit Requirements
+                            </button>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <button class="btn btn-primary w-100 text-start" onclick="fillQuestion('What are the evaluation criteria for this tender?')">
+                                Evaluation Criteria
+                            </button>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <button class="btn btn-primary w-100 text-start" onclick="fillQuestion('What is the project timeline mentioned in the tender?')">
+                                Project Timeline
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function handleKeyPress(event) {
+        if (event.key === 'Enter') {
+            sendMessage();
+        }
+    }
+    
+    function fillQuestion(question) {
+        document.getElementById('messageInput').value = question;
+        // Optional: Focus on the input
+        document.getElementById('messageInput').focus();
+    }
+
+    async function sendMessage() {
+        const messageInput = document.getElementById('messageInput');
+        const chatMessages = document.getElementById('chatMessages');
+        const message = messageInput.value.trim();
+
+        if (!message) return;
+
+        // Add user message to chat
+        chatMessages.innerHTML += `
+            <div class="mb-3 text-end">
+                <div class="d-inline-block p-2 px-3 bg-primary text-white rounded-3 shadow-sm">
+                    ${message}
+                </div>
+                <div class="small text-muted mt-1">You</div>
+            </div>
+        `;
+        
+        messageInput.value = '';
+        
+        // Show loading indicator
+        const loadingId = 'loading-' + Date.now();
+        chatMessages.innerHTML += `
+            <div id="${loadingId}" class="mb-3">
+                <div class="d-flex align-items-center">
+                    <div class="spinner-border spinner-border-sm text-primary me-2" role="status"></div>
+                    <span class="text-muted">Analyzing tender document...</span>
+                </div>
+            </div>
+        `;
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+
+        try {
+			const payload = {
+			query: message
+		};
+    
+		const urlPrefix = "{{ url_prefix }}";
+		const response = await fetch(`${urlPrefix}/query`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+		});
+            
+            // Remove loading indicator
+            const loadingElement = document.getElementById(loadingId);
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+            
+            const data = await response.json();
+
+            if (response.ok) {
+                // Format the response text by preserving paragraphs and line breaks
+                const formattedAnswer = data.answer
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                    .replace(/\n\n/g, '<br><br>')
+                    .replace(/\n/g, '<br>');
+                
+                chatMessages.innerHTML += `
+                    <div class="mb-4">
+                        <div class="d-inline-block p-3 bg-light rounded-3 shadow-sm" style="max-width: 85%;">
+                            <div class="answer-content">${formattedAnswer}</div>
+                        </div>
+                        <div class="small text-muted mt-1">Tender Assistant</div>
+                    </div>
+                `;
+            } else {
+                chatMessages.innerHTML += `
+                    <div class="mb-4">
+                        <div class="d-inline-block p-3 bg-light rounded-3 shadow-sm text-danger">
+                            Error: ${data.error || 'Unable to process your request'}
+                        </div>
+                        <div class="small text-muted mt-1">System</div>
+                    </div>
+                `;
+            }
+        } catch (error) {
+            // Remove loading indicator if it still exists
+            const loadingElement = document.getElementById(loadingId);
+            if (loadingElement) {
+                loadingElement.remove();
+            }
+            
+            chatMessages.innerHTML += `
+                <div class="mb-4">
+                    <div class="d-inline-block p-3 bg-light rounded-3 shadow-sm text-danger">
+                        Error processing message. Please try again.
+                    </div>
+                    <div class="small text-muted mt-1">System</div>
+                </div>
+            `;
+            console.error('Query error:', error);
+        }
+
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+</script>
+{% endblock %}

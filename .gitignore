@@ -1,0 +1,16 @@
+# Add these to your .gitignore file
+*.sqlite
+*.db
+__pycache__/
+venv/
+.env
+gem_bids/
+instance/
+uploads/
+test
+vector_store.faiss/
+old_records_export/
+tender_analyzer.dump
+cleanup_old_documents.py
+test.py.env
+*.log

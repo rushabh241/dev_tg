@@ -1,0 +1,116 @@
+{% extends "admin.html" %}
+
+{% block content %}
+
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body">
+
+                <form id="fetchGemForm">
+                    <div class="mb-3">
+                        <label for="organization_id" class="form-label">
+                            <i class="bi bi-building"></i>Organization ID
+                        </label>
+                        <input type="number" class="form-control" id="organization_id" placeholder="Enter Organization">
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="searchKeyword" class="form-label">
+                            <i class="bi bi-search me-1"></i>Search Keyword
+                        </label>
+                        <input type="text" class="form-control" id="searchKeyword"
+                            placeholder="Enter keyword (e.g., 'laptop', 'construction') or leave empty for all tenders">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label for="maxTenders" class="form-label">
+                                <i class="bi bi-list-ol me-1"></i>Maximum Tenders to Fetch
+                            </label>
+                            <input type="number" class="form-control" id="maxTenders" value="10" min="1" max="100">
+                        </div>
+
+                    </div>
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-success btn-lg" id="fetchBtn">
+                            <i class="bi bi-cloud-download me-2"></i>Start Fetching Tenders
+                        </button>
+                    </div>
+                </form>
+
+                <div id="fetchProgress" class="mt-4" style="display: none;">
+                    <div class="card">
+                        <div class="card-body text-center">
+                            <div class="spinner-border text-primary mb-3" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <h5 class="card-title">Fetching Tenders...</h5>
+                            <p id="progressMessage" class="card-text">Starting the GeM
+                                tender fetching process...</p>
+                            <div class="progress mb-3">
+                                <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                    style="width: 100%"></div>
+                            </div>
+                            <p class="text-muted small">This process runs in the background.
+                                You can continue using the application.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Fetch GeM Tenders - Demo Organization Only
+    document.getElementById('fetchGemForm')?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const organizationId = document.getElementById('organization_id').value;
+        const searchKeyword = document.getElementById('searchKeyword').value.trim();
+        const maxTenders = document.getElementById('maxTenders').value;
+        const fetchBtn = document.getElementById('fetchBtn');
+
+        // Disable button to prevent multiple submissions
+        fetchBtn.disabled = true;
+
+        try {
+            const response = await fetch('{{ url_prefix }}/admin-fetch-gem-tenders', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    organization_id: parseInt(organizationId) || null,
+                    search_keyword: searchKeyword || "none",
+                    max_tenders: parseInt(maxTenders) || 10
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                showAlert('success', result.message || 'Tender fetching started successfully.');
+
+                // Optional: auto-reset form after a short delay
+                setTimeout(() => {
+                    document.getElementById('fetchGemForm').reset();
+                    fetchBtn.disabled = false;
+                }, 2000);
+
+            } else {
+                showAlert('danger', result.error || 'Failed to start fetching tenders');
+                fetchBtn.disabled = false;
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('danger', 'Network error. Please try again.');
+            fetchBtn.disabled = false;
+        }
+    });
+</script>
+
+{% endblock %}

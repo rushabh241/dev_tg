@@ -1,0 +1,182 @@
+{% extends "admin.html" %}
+
+{% block content %}
+
+<div class="container-fluid px-4">
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-secondary btn-sm" onclick="window.location.reload()">
+                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Card -->
+    <div class="card shadow-sm">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">Organization access Settings</h5>
+            <div>
+                <div class="input-group input-group-sm" style="width: 250px;">
+                    <span class="input-group-text bg-light border-0">
+                        <i class="bi bi-search"></i>
+                    </span>
+                    <input type="text" class="form-control border-0 bg-light" id="orgSearch" placeholder="Search organizations...">
+                </div>
+            </div>
+        </div>
+        
+        <div class="card-body">
+            <table class="table table-hover" id="organizationsTable">
+                <thead class="table-light">
+                    <tr>
+                        <th>ID</th>
+                        <th>Organization</th>
+                        <th class="text-center">Pricing Intelligence</th>
+                        <th class="text-center">Upload</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for org in organizations %}
+                    {% set org_features = access_control.get(org.id, {}) %}
+                    <tr class="organization-row">
+                        <td>{{ org.id }}</td>
+                        <td>{{ org.name }}</td>
+                        
+                        <!-- Pricing Intelligence Toggle -->
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input access-toggle" 
+                                       type="checkbox" 
+                                       id="pricing_intelligence_{{ org.id }}"
+                                       data-org-id="{{ org.id }}"
+                                       data-feature="pricing_intelligence"
+                                       {% if org_features.get('pricing_intelligence', False) %}checked{% endif %}
+                                       style="cursor: pointer; width: 2.5em; height: 1.25em;">
+                            </div>
+                        </td>
+                        <td class="text-center">
+                            <div class="form-check form-switch d-inline-block">
+                                <input class="form-check-input access-toggle" 
+                                       type="checkbox" 
+                                       id="upload{{ org.id }}"
+                                       data-org-id="{{ org.id }}"
+                                       data-feature="upload"
+                                       {% if org_features.get('upload', False) %}checked{% endif %}
+                                       style="cursor: pointer; width: 2.5em; height: 1.25em;">
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="4" class="text-center text-muted">No organizations found.</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript remains exactly the same -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Search functionality
+    const searchInput = document.getElementById('orgSearch');
+    if (searchInput) {
+        searchInput.addEventListener('keyup', function() {
+            const searchTerm = this.value.toLowerCase();
+            const rows = document.querySelectorAll('.organization-row');
+            
+            rows.forEach(row => {
+                const orgName = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+                const orgId = row.querySelector('td:first-child').textContent.toLowerCase();
+                
+                if (orgName.includes(searchTerm) || orgId.includes(searchTerm)) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        });
+    }
+    
+    // Toggle functionality
+    const toggles = document.querySelectorAll('.access-toggle');
+    
+    toggles.forEach(toggle => {
+        toggle.addEventListener('change', function() {
+            const orgId = this.dataset.orgId;
+            const feature = this.dataset.feature;
+            const enabled = this.checked;
+            
+            // Disable toggle while processing
+            this.disabled = true;
+            
+            // Send update to server
+            updateAccessibilityControl(orgId, feature, enabled);
+        });
+    });
+    
+    async function updateAccessibilityControl(orgId, feature, enabled) {
+        try {
+            const response = await fetch('{{ url_for("update_access") }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    organization_id: parseInt(orgId),
+                    feature: feature,
+                    enabled: enabled
+                })
+            });
+            
+            if (!response.ok) {
+                throw new Error(`Server returned ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Re-enable toggle
+                const toggle = document.querySelector(`.access-toggle[data-org-id="${orgId}"][data-feature="${feature}"]`);
+                if (toggle) toggle.disabled = false;
+            } else {
+                throw new Error(data.message || 'Update failed');
+            }
+            
+        } catch (error) {
+            console.error('Error updating access control:', error);
+            
+            // Revert toggle
+            const toggle = document.querySelector(`.access-toggle[data-org-id="${orgId}"][data-feature="${feature}"]`);
+            if (toggle) {
+                toggle.checked = !enabled;
+                toggle.disabled = false;
+            }
+        }
+    }
+    
+    // Add CSS for toggle styling
+    const style = document.createElement('style');
+    style.textContent = `
+        .form-switch .form-check-input {
+            width: 2.5em;
+            height: 1.25em;
+            margin-top: 0.25em;
+            cursor: pointer;
+        }
+        .form-switch .form-check-input:checked {
+            background-color: #6f42c1;
+            border-color: #6f42c1;
+        }
+        .form-switch .form-check-input:focus {
+            box-shadow: 0 0 0 0.25rem rgba(111, 66, 193, 0.25);
+        }
+    `;
+    document.head.appendChild(style);
+});
+</script>
+
+{% endblock %}

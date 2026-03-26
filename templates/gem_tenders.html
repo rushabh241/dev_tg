@@ -1,0 +1,877 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-1">
+    <div class="row mb-1">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <!-- Dynamic Title based on portal -->
+                <h3 id="portal-title">GeM Tenders</h3>
+                <!-- Dynamic Description based on portal -->
+                <p class="text-muted" id="portal-description">
+                    Tenders downloaded from Government e-Marketplace (GeM) based on your service definition
+                </p>
+            </div>
+            <!-- Dropdown added here - right side of heading -->
+            <div style="min-width: 200px;">
+                <select class="form-select" id="portalFilter">
+                    <option value="gem">GeM Tenders</option>
+                    <option value="maha">Maha Tenders</option>
+                    <option value="cppp">CPPP Tenders</option>
+                </select>
+            </div>
+        </div>
+    </div>
+
+    <!-- GeM Tenders Section (Default) -->
+    <div id="gem-section">
+        <!-- Original GeM Tenders content remains exactly as it was -->
+        <div class="row mb-2">
+            <div class="col-md-12">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="tenderTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="matching-tab" data-bs-toggle="tab"
+                                    data-bs-target="#matching" type="button" role="tab">
+                                    <i class="fas fa-check-circle me-2 text-success"></i>Matching Tenders
+                                    <span class="badge bg-success ms-2">{{ matching_tenders|length }}</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="valid-tab" data-bs-toggle="tab" data-bs-target="#valid"
+                                    type="button" role="tab">
+                                    <i class="fas fa-list me-2"></i>All Tenders
+                                    <span class="badge bg-secondary ms-2" id="all-badge">{{ valid_tenders|length }}</span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="expired-tab" data-bs-toggle="tab" data-bs-target="#expired"
+                                    type="button" role="tab">
+                                    <i class="bi bi-hourglass-bottom"></i> Due Date Passed Tenders
+                                    <span class="badge bg-secondary ms-2" id="expired-badge">{{ expired_tenders|length }}</span>
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content p-3" id="tenderTabContent">
+                            <!-- Matching Tenders Tab -->
+                            <div class="tab-pane fade show active" id="matching" role="tabpanel">
+                                {% if matching_tenders %}
+                                <div class="mb-3">
+                                    <input type="text" id="searchInput" class="form-control"
+                                        placeholder="Search description or match reason...">
+                                </div>
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="tenderTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Tender ID</th>
+                                                <th style="width: 30%;">Description</th>
+
+                                                <!-- 🔽 Clickable sortable header -->
+                                                <th style="width: 10%; cursor:pointer;" class="sort-due-date">
+                                                    Due Date
+                                                    <span class="dueDateArrow">↕</span>
+                                                </th>
+
+                                                <th style="width: 40%;">Match Reason</th>
+                                                <th style="width: 16%;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for tender in matching_tenders %}
+                                            <tr>
+                                                <td>{{ tender.tender_id }}</td>
+                                                <td style="width: 25%;">{{ tender.description }}</td>
+                                                <td style="width: 15%;">{{ tender.due_date }}</td>
+                                                <td style="width: 40%;">
+                                                    {{ tender.match_reason.split('relevance.', 1)[1] if 'SHORTLIST by
+                                                    AI' in
+                                                    tender.match_reason else tender.match_reason }}
+                                                </td>
+                                                <td>
+                                                    {% if tender.pdf_path %}
+                                                    {% set raw_path = tender.pdf_path.replace('\\', '/') %}
+                                                    {% set clean_path = raw_path.replace('gem_bids/', '') %}
+                                                    {% set clean_path = clean_path.replace('gem_bids\\', '') %}
+                                                    {% set full_path = 'gem_bids/' + clean_path %}
+
+                                                    <button class="btn btn-sm btn-outline-secondary"
+                                                        onclick="viewPdf('{{ url_prefix }}/view-pdf?path={{ full_path | urlencode }}')"
+                                                        title="View PDF">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </button>
+                                                    {% if tender.is_analyzed %}
+                                                    <button class="btn btn-sm btn-outline-success analyze-btn"
+                                                        style="color: aliceblue;"
+                                                        data-tender-id="{{ tender.tender_id }}" title="Analyze Tender">
+                                                        <i class="bi bi-eye"></i> Review
+                                                    </button>
+                                                    {% else %}
+                                                    <button class="btn btn-sm btn-outline-success analyze-btn"
+                                                        style="color: aliceblue;"
+                                                        data-tender-id="{{ tender.tender_id }}" title="Analyze Tender">
+                                                        <i class="fas fa-magic"></i> Analyze
+                                                    </button>
+                                                    {% endif %}
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5 text-muted">
+                                    <i class="fas fa-search fa-3x mb-3"></i>
+                                    <h5>No matching tenders found</h5>
+                                    <p>To get tenders, run the gem.py script manually</p>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- All Tenders Tab -->
+                            <div class="tab-pane fade show" id="valid" role="tabpanel">
+                                {% if valid_tenders %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="validTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Tender ID</th>
+                                                <th>Description</th>
+                                                <th style="width: 10%;  cursor:pointer;" class="sort-due-date">
+                                                    Due Date
+                                                    <span class="dueDateArrow">↕</span>
+                                                </th>
+                                                <th style="width: 10%;">Match Status</th>
+                                                <th style="width: 10%;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for tender in valid_tenders %}
+                                            {% if tender.source not in ['MahaTender_Original', 'MahaTender_Analyze', 'CPPP_Original', 'CPPP_Analyze'] %}
+                                            <tr>
+                                                <td>{{ tender.tender_id }}</td>
+                                                <td>{{ tender.description }}</td>
+                                                <td>{{ tender.due_date }}</td>
+                                                <td>
+                                                    {% if tender.matches_services %}
+                                                    <span class="badge bg-success">Match</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">No Match</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if tender.document_url %}
+                                                    <a href="{{ tender.document_url }}" target="_blank"
+                                                        class="btn btn-sm btn-outline-primary me-1" title="View on GeM">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                    {% endif %}
+                                                    {% if tender.pdf_path %}
+                                                    {% set raw_path = tender.pdf_path.replace('\\', '/') %}
+                                                    {% set clean_path = raw_path.replace('gem_bids/', '') %}
+                                                    {% set clean_path = clean_path.replace('gem_bids\\', '') %}
+                                                    {% set full_path = 'gem_bids/' + clean_path %}
+
+                                                    <button class="btn btn-sm btn-outline-secondary"
+                                                        onclick="viewPdf('{{ url_prefix }}/view-pdf?path={{ full_path | urlencode }}')"
+                                                        title="View PDF">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endif%}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5 text-muted">
+                                    <i class="fas fa-search fa-3x mb-3"></i>
+                                    <h5>No tenders found</h5>
+                                    <p>To get tenders, run the gem.py script manually</p>
+                                </div>
+                                {% endif %}
+                            </div>
+
+                            <!-- Due Date Passed Tenders Tab-->
+                            <div class="tab-pane fade" id="expired" role="tabpanel">
+                                {% if expired_tenders %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="expiredTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Tender ID</th>
+                                                <th>Description</th>
+                                                <th style="width: 10%; cursor:pointer;" class="sort-due-date">
+                                                    Due Date
+                                                    <span class="dueDateArrow">↕</span>
+                                                </th>
+                                                <th style="width: 10%;">Match Status</th>
+                                                <th style="width: 10%;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for tender in expired_tenders %}
+                                            {% if tender.source not in ['MahaTender_Original', 'MahaTender_Analyze', 'CPPP_Original', 'CPPP_Analyze'] %}
+                                            <tr>
+                                                <td>{{ tender.tender_id }}</td>
+                                                <td>{{ tender.description }}</td>
+                                                <td>{{ tender.due_date }}</td>
+                                                <td>
+                                                    {% if tender.matches_services %}
+                                                    <span class="badge bg-success">Match</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">No Match</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td>
+                                                    {% if tender.document_url %}
+                                                    <a href="{{ tender.document_url }}" target="_blank"
+                                                        class="btn btn-sm btn-outline-primary me-1" title="View on GeM">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                    {% endif %}
+                                                    {% if tender.pdf_path %}
+                                                    {% set raw_path = tender.pdf_path.replace('\\', '/') %}
+                                                    {% set clean_path = raw_path.replace('gem_bids/', '') %}
+                                                    {% set clean_path = clean_path.replace('gem_bids\\', '') %}
+                                                    {% set full_path = 'gem_bids/' + clean_path %}
+
+                                                    <button class="btn btn-sm btn-outline-secondary"
+                                                        onclick="viewPdf('{{ url_prefix }}/view-pdf?path={{ full_path | urlencode }}')"
+                                                        title="View PDF">
+                                                        <i class="fas fa-file-pdf"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center py-5 text-muted">
+                                    <i class="fas fa-search fa-3x mb-3"></i>
+                                    <h5>No tenders found</h5>
+                                    <p>To get tenders, run the gem.py script manually</p>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Maha Tenders Section (Hidden by default) -->
+    <div id="maha-section" style="display: none;">
+        <div class="row mb-2">
+            <div class="col-md-12">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="mahaTenderTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="maha-all-tab" data-bs-toggle="tab"
+                                    data-bs-target="#maha-all" type="button" role="tab">
+                                    <i class="fas fa-list me-2"></i>All Tenders
+                                    <span class="badge bg-secondary ms-2" id="maha-all-count"></span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="maha-expired-tab" data-bs-toggle="tab"
+                                    data-bs-target="#maha-expired" type="button" role="tab">
+                                    <i class="bi bi-hourglass-bottom"></i> Due Date Passed Tenders
+                                    <span class="badge bg-secondary ms-2" id="maha-expired-count"></span>
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content p-3" id="mahaTenderTabContent">
+                            <!-- All Maha Tenders Tab -->
+                            <div class="tab-pane fade show active" id="maha-all" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="mahaAllTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 15%;">Tender ID</th>
+                                                <th style="width: 55%;">Description</th>
+                                                <th style="width: 10%; cursor:pointer;" class="sort-due-date">
+                                                    Due Date
+                                                    <span class="dueDateArrow">↕</span>
+                                                </th>
+                                                <th style="width: 15%;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="maha-all-body">
+                                            {% for tender in valid_tenders %}
+                                            {% if tender.source in ['MahaTender_Original', 'MahaTender_Analyze'] %}
+                                            <tr>
+                                                <td>{{ tender.tender_number }}</td>
+                                                <td>{{ tender.description }}</td>
+                                                <td>{{ tender.due_date }}</td>
+                                                <td>
+                                                    <a href="https://mahatenders.gov.in/nicgep/app" target="_blank"
+                                                        class="btn btn-sm btn-outline-primary me-1"
+                                                        title="View on Maha Portal">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                    <button class="btn btn-sm btn-outline-success analyze-btn"
+                                                        style="color: aliceblue;" data-tender-id="{{ tender.id }}"
+                                                        title="Analyze Tender">
+                                                        <i class="bi bi-eye"></i> Review
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="maha-all-empty" class="text-center py-5 text-muted" style="display: none;">
+                                    <i class="fas fa-search fa-3x mb-3"></i>
+                                    <h5>No Maha Tenders found</h5>
+                                    <p>No tenders from Maha Portal available</p>
+                                </div>
+                            </div>
+
+                            <!-- Maha Due Date Passed Tenders Tab-->
+                            <div class="tab-pane fade" id="maha-expired" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="mahaExpiredTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 25%;">Tender ID</th>
+                                                <th style="width: 65%;">Description</th>
+                                                <th style="width: 10%; cursor:pointer;" class="sort-due-date">
+                                                    Due Date
+                                                    <span class="dueDateArrow">↕</span>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="maha-expired-body">
+                                            {% for tender in expired_tenders %}
+                                            {% if tender.source in ['MahaTender_Original', 'MahaTender_Analyze'] %}
+                                            <tr>
+                                                <td>{{ tender.tender_number }}</td>
+                                                <td>{{ tender.description }}</td>
+                                                <td>{{ tender.due_date }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="maha-expired-empty" class="text-center py-5 text-muted" style="display: none;">
+                                    <i class="fas fa-search fa-3x mb-3"></i>
+                                    <h5>No Due Date Passed Maha Tenders found</h5>
+                                    <p>No expired tenders from Maha Portal available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CPPP Tenders Section (Hidden by default - Blank page as requested) -->
+    <div id="cppp-section" style="display: none;">
+        <div class="row mb-2">
+            <div class="col-md-12">
+                <div class="card shadow-sm mb-4">
+                    <div class="card-body">
+                        <ul class="nav nav-tabs" id="cpppTenderTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="cppp-all-tab" data-bs-toggle="tab"
+                                    data-bs-target="#cppp-all" type="button" role="tab">
+                                    <i class="fas fa-list me-2"></i>All Tenders
+                                    <span class="badge bg-secondary ms-2" id="cppp-all-count"></span>
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="cppp-expired-tab" data-bs-toggle="tab"
+                                    data-bs-target="#cppp-expired" type="button" role="tab">
+                                    <i class="bi bi-hourglass-bottom"></i> Due Date Passed Tenders
+                                    <span class="badge bg-secondary ms-2" id="cppp-expired-count"></span>
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content p-3" id="cpppTenderTabContent">
+                            <!-- All CPPP Tenders Tab -->
+                            <div class="tab-pane fade show active" id="cppp-all" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="cpppAllTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 10%; min-width: 100px;">Tender ID</th>
+                                                <th style="width: 12%; max-width: 80px;">Tender Reference No.</th>
+                                                <th style="width: 48%;">Description</th>
+                                                <th style="width: 15%; min-width: 100px; cursor:pointer;"
+                                                    class="sort-due-date">
+                                                    Due Date
+                                                    <span class="dueDateArrow">↕</span>
+                                                </th>
+                                                <th style="width: 15%; min-width: 130px;">Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cppp-all-body">
+                                            {% for tender in valid_tenders %}
+                                            {% if tender.source in ['CPPP_Original', 'CPPP_Analyze'] %}
+                                            <tr>
+                                                <td>{{ tender.tender_number }}</td>
+                                                <td>{{ tender.tender_reference_number }}</td>
+                                                <td>{{ tender.description.replace('PDF Tender: ', '') }}</td>
+                                                <td>{{ tender.due_date }}</td>
+                                                <td>
+                                                    <!-- Show PDF link if PDF exists -->
+                                                    {% if tender.has_pdf and tender.pdf_paths %}
+                                                    {% set pdf_url = tender.pdf_paths[0].path %}
+                                                    <a href="{{ pdf_url }}" target="_blank"
+                                                        class="btn btn-sm btn-outline-primary me-1" title="View PDF">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                    {% else %}
+                                                    <a href="https://gem.gov.in/cppp" target="_blank"
+                                                        class="btn btn-sm btn-outline-primary me-1"
+                                                        title="View on CPPP Portal">
+                                                        <i class="fas fa-external-link-alt"></i>
+                                                    </a>
+                                                    {% endif %}
+
+                                                    <!-- Analyze Tender Button -->
+                                                    <button class="btn btn-sm btn-outline-success analyze-btn"
+                                                        style="color: aliceblue;"
+                                                        data-tender-id="{{ tender.tender_reference_number  }}"
+                                                        title="Analyze Tender">
+                                                        <i class="bi bi-eye"></i> Review
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="cppp-all-empty" class="text-center py-5 text-muted" style="display: none;">
+                                    <i class="fas fa-search fa-3x mb-3"></i>
+                                    <h5>No CPPP Tenders found</h5>
+                                    <p>No tenders from CPPP Portal available</p>
+                                </div>
+                            </div>
+
+                            <!-- CPPP Due Date Passed Tenders Tab-->
+                            <div class="tab-pane fade" id="cppp-expired" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-hover" id="cpppExpiredTable">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th style="width: 15%;">Tender ID</th>
+                                                <th style="width: 10%;">Tender Reference No.</th>
+                                                <th style="width: 40%;">Description</th>
+                                                <th style="width: 15%; cursor:pointer;" class="sort-due-date">
+                                                    Due Date
+                                                    <span class="dueDateArrow">↕</span>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="cppp-expired-body">
+                                            {% for tender in expired_tenders %}
+                                            {% if tender.source in ['CPPP_Original', 'CPPP_Analyze'] %}
+                                            <tr>
+                                                <td>{{ tender.tender_number }}</td>
+                                                <td>{{ tender.tender_reference_number }}</td>
+                                                <td>{{ tender.description }}</td>
+                                                <td>{{ tender.due_date }}</td>
+                                            </tr>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div id="cppp-expired-empty" class="text-center py-5 text-muted" style="display: none;">
+                                    <i class="fas fa-search fa-3x mb-3"></i>
+                                    <h5>No Due Date Passed CPPP Tenders found</h5>
+                                    <p>No expired tenders from CPPP Portal available</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Viewer Modal -->
+    <div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Tender Document</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 75vh;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function viewPdf(pdfUrl) {
+        document.getElementById('pdfViewerFrame').src = pdfUrl;
+        const modal = new bootstrap.Modal(document.getElementById('pdfViewerModal'));
+        modal.show();
+    }
+
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        const container = document.querySelector('.container');
+        container.insertBefore(alertDiv, container.firstChild);
+
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 500);
+        }, 5000);
+    }
+
+    // Portal switching functionality
+    document.addEventListener('DOMContentLoaded', function () {
+        const portalFilter = document.getElementById('portalFilter');
+        const portalTitle = document.getElementById('portal-title');
+        const portalDescription = document.getElementById('portal-description');
+
+        // Define portal configurations
+        const portalConfigs = {
+            gem: {
+                title: 'GeM Tenders',
+                description: 'Tenders downloaded from Government e-Marketplace (GeM) based on your service definition'
+            },
+            maha: {
+                title: 'Maha Tenders',
+                description: 'Tenders downloaded from Maharashtra Government e-Procurement Portal (Maha Tenders)'
+            },
+            cppp: {
+                title: 'CPPP Tenders',
+                description: 'Tenders downloaded from Central Public Procurement Portal (CPPP)'
+            }
+        };
+
+        // Count GeM Tenders
+        const gemAllTenders = document.querySelectorAll('#valid tbody tr');
+        const gemExpiredTenders = document.querySelectorAll('#expired tbody tr');
+
+        // Count Maha Tenders
+        const mahaAllTenders = document.querySelectorAll('#maha-all-body tr');
+        const mahaExpiredTenders = document.querySelectorAll('#maha-expired-body tr');
+
+        // Count CPPP Tenders
+        const cpppAllTenders = document.querySelectorAll('#cppp-all-body tr');
+        const cpppExpiredTenders = document.querySelectorAll('#cppp-expired-body tr');
+
+        // Update counts
+        document.getElementById('maha-all-count').textContent = mahaAllTenders.length;
+        document.getElementById('maha-expired-count').textContent = mahaExpiredTenders.length;
+        document.getElementById('cppp-all-count').textContent = cpppAllTenders.length;
+        document.getElementById('cppp-expired-count').textContent = cpppExpiredTenders.length;
+
+        // Update GeM counts
+        document.getElementById('all-badge').textContent = gemAllTenders.length;
+        document.getElementById('expired-badge').textContent = gemExpiredTenders.length;
+
+        // Show/hide empty messages
+        if (mahaAllTenders.length === 0) {
+            document.getElementById('maha-all-empty').style.display = 'block';
+        }
+        if (mahaExpiredTenders.length === 0) {
+            document.getElementById('maha-expired-empty').style.display = 'block';
+        }
+        if (cpppAllTenders.length === 0) {
+            document.getElementById('cppp-all-empty').style.display = 'block';
+        }
+        if (cpppExpiredTenders.length === 0) {
+            document.getElementById('cppp-expired-empty').style.display = 'block';
+        }
+
+        // Handle portal filter change
+        portalFilter.addEventListener('change', function () {
+            const portal = this.value;
+
+            // Hide all sections
+            document.getElementById('gem-section').style.display = 'none';
+            document.getElementById('maha-section').style.display = 'none';
+            document.getElementById('cppp-section').style.display = 'none';
+
+            // Show selected section
+            document.getElementById(`${portal}-section`).style.display = 'block';
+
+            // Update portal title and description
+            const config = portalConfigs[portal];
+            portalTitle.textContent = config.title;
+            portalDescription.textContent = config.description;
+
+            // Initialize sort functionality for the newly displayed tables
+            initSortingForVisibleTables();
+        });
+
+        // Initialize sort for GeM tables (default)
+        initSortingForVisibleTables();
+    });
+
+    document.getElementById('searchInput')?.addEventListener('keyup', function () {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#matching tbody tr');
+
+        rows.forEach(row => {
+            const description = row.cells[1].textContent.toLowerCase();
+            const reason = row.cells[3].textContent.toLowerCase();
+            row.style.display = (description.includes(filter) || reason.includes(filter)) ? '' : 'none';
+        });
+    });
+
+    let analysisAbortController = null;
+
+    document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.analyze-btn');
+        const mahaBtn = e.target.closest('.maha-analyze-btn');
+        const cpppBtn = e.target.closest('.cppp-analyze-btn');
+
+        if (!btn && !mahaBtn && !cpppBtn) return;
+
+        const tenderId = btn ? btn.dataset.tenderId : (mahaBtn ? mahaBtn.dataset.tenderId : cpppBtn.dataset.tenderId);
+        btn.disabled = true;
+
+        let analyze_button = setTimeout(() => {
+            btn.innerText = 'Analyzing...';
+        }, 300);
+
+        let popupTimeout = setTimeout(() => {
+            showLoadingPopup();
+        }, 300);
+
+        // Create a new AbortController for this analysis
+        analysisAbortController = new AbortController();
+
+        try {
+            const response = await fetch('{{ url_prefix }}/analyze_tender', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tender_id: tenderId }),
+                signal: analysisAbortController.signal // Pass the abort signal
+            });
+
+            const result = await response.json();
+            console.log('Backend Response:', result);
+
+            if (result.redirect_url) {
+                window.location.href = result.redirect_url;
+            } else if (result.error) {
+                alert(result.error);
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log('Analysis cancelled - user navigated away');
+            } else {
+                console.error('Error sending tender ID:', error);
+                alert('Error analyzing tender');
+            }
+        } finally {
+            clearTimeout(analyze_button);
+            clearTimeout(popupTimeout);
+            hideLoadingPopup();
+            btn.disabled = false;
+        }
+    });
+
+    // Stop analysis when user navigates away
+    window.addEventListener('beforeunload', () => {
+        if (analysisAbortController) {
+            analysisAbortController.abort();
+        }
+    });
+
+    // Also handle back button and link clicks
+    window.addEventListener('popstate', () => {
+        if (analysisAbortController) {
+            analysisAbortController.abort();
+        }
+    });
+
+    let dueDateAsc = true;
+
+    // function parseDDMMYYYY(dateStr) {
+    //     if (!dateStr) return new Date(0); // fallback for empty cells
+    //     const [day, month, year] = dateStr.split('-').map(Number);
+    //     return new Date(year, month - 1, day);
+    // }
+
+    // function sortTableByDueDate(table, ascending, header) {
+    //     const tbody = table.querySelector('tbody');
+    //     const rows = Array.from(tbody.querySelectorAll('tr'));
+
+    //     rows.sort((a, b) => {
+    //         let dateA = parseDDMMYYYY(a.cells[2].innerText.trim());
+    //         let dateB = parseDDMMYYYY(b.cells[2].innerText.trim());
+    //         return ascending ? dateA - dateB : dateB - dateA;
+    //     });
+
+    //     // Re-append rows in the new order
+    //     rows.forEach(r => tbody.appendChild(r));
+
+    //     // Update arrow for the current header
+    //     if (header) {
+    //         const arrow = header.querySelector('.dueDateArrow');
+    //         // Set the arrow to reflect the *current* sort
+    //         arrow.innerText = ascending ? "↑" : "↓";
+    //     }
+    // }
+
+    // // Initialize sorting for all visible tables
+    // function initSortingForVisibleTables() {
+    //     // Clear existing event listeners first
+    //     document.querySelectorAll('.sort-due-date').forEach(header => {
+    //         header.replaceWith(header.cloneNode(true));
+    //     });
+
+    //     // Initialize sorting for all sort-due-date headers in visible tables
+    //     document.querySelectorAll('.sort-due-date').forEach(header => {
+    //         const table = header.closest('table');
+    //         const tableId = table.id;
+    //         const storageKey = `sortOrder_${tableId}`;
+
+    //         // --- 1. Load and Apply Initial Sort State ---
+    //         let savedState = localStorage.getItem(storageKey) || 'asc';
+    //         let currentlyDisplayedAsc = savedState === 'asc';
+
+    //         // Apply the saved state immediately
+    //         if (table.querySelector('tbody tr')) {
+    //             sortTableByDueDate(table, currentlyDisplayedAsc, header);
+    //         }
+
+    //         let nextClickAsc = !currentlyDisplayedAsc;
+
+    //         // --- 2. Add Click Listener for Sorting ---
+    //         header.addEventListener('click', function () {
+    //             nextClickAsc = !nextClickAsc;
+    //             sortTableByDueDate(table, nextClickAsc, header);
+    //             localStorage.setItem(storageKey, nextClickAsc ? 'asc' : 'desc');
+    //             nextClickAsc = !nextClickAsc;
+    //         });
+    //     });
+    // }
+
+
+    function parseDDMMYYYY(dateStr) {
+        if (!dateStr || dateStr.trim() === '') return new Date(0); // fallback for empty cells
+        const [day, month, year] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
+
+    function sortTableByDueDate(table, ascending, header) {
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        // Filter out any empty rows
+        const validRows = rows.filter(row => row.cells.length > 2);
+
+        validRows.sort((a, b) => {
+            try {
+                let dateA = parseDDMMYYYY(a.cells[2].textContent.trim());
+                let dateB = parseDDMMYYYY(b.cells[2].textContent.trim());
+                return ascending ? dateA - dateB : dateB - dateA;
+            } catch (error) {
+                console.error('Error parsing date:', error);
+                return 0;
+            }
+        });
+
+        // Re-append rows in the new order
+        validRows.forEach(r => tbody.appendChild(r));
+
+        // Update arrow for the current header
+        if (header) {
+            const arrow = header.querySelector('.dueDateArrow');
+            arrow.textContent = ascending ? "↑" : "↓";
+        }
+    }
+
+    // Initialize sorting for all visible tables
+    function initSortingForVisibleTables() {
+        // Clear existing event listeners by re-cloning headers
+        document.querySelectorAll('.sort-due-date').forEach(header => {
+            const newHeader = header.cloneNode(true);
+            header.parentNode.replaceChild(newHeader, header);
+        });
+
+        // Initialize sorting for all sort-due-date headers in visible tables
+        document.querySelectorAll('.sort-due-date').forEach(header => {
+            const table = header.closest('table');
+            if (!table) return;
+
+            const tableId = table.id || 'table_' + Math.random().toString(36).substr(2, 9);
+            const storageKey = `sortOrder_${tableId}`;
+
+            // Load saved sort state or default to ascending
+            let savedState = localStorage.getItem(storageKey);
+            let currentSortAsc = savedState === null ? true : savedState === 'asc';
+
+            // Apply initial sort if there are rows
+            const hasRows = table.querySelector('tbody tr') !== null;
+            if (hasRows) {
+                // Set arrow to reflect current sort state
+                const arrow = header.querySelector('.dueDateArrow');
+                arrow.textContent = currentSortAsc ? "↑" : "↓";
+
+                // Sort the table
+                sortTableByDueDate(table, currentSortAsc, header);
+            }
+
+            // Add click listener
+            header.addEventListener('click', function () {
+                // Toggle sort direction
+                currentSortAsc = !currentSortAsc;
+
+                // Sort the table
+                sortTableByDueDate(table, currentSortAsc, header);
+
+                // Save the new sort state
+                localStorage.setItem(storageKey, currentSortAsc ? 'asc' : 'desc');
+            });
+        });
+    }
+
+    // Call this function when page loads and when switching portals
+    document.addEventListener('DOMContentLoaded', function () {
+        initSortingForVisibleTables();
+
+        // Re-initialize sorting when portal changes
+        document.getElementById('portalFilter')?.addEventListener('change', function () {
+            // Small delay to ensure tables are visible
+            setTimeout(initSortingForVisibleTables, 50);
+        });
+    });
+
+    // Helper functions for loading popup (if not defined elsewhere)
+    function showLoadingPopup() {
+        // Implementation depends on your existing loading popup
+    }
+
+    function hideLoadingPopup() {
+        // Implementation depends on your existing loading popup
+    }
+</script>
+{% endblock %}

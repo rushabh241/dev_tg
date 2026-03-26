@@ -1,0 +1,79 @@
+{% extends "admin.html" %}
+
+{% block content %}
+<div class="container-fluid">
+
+    <!-- Page Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4 class="fw-bold text-primary mb-0">
+            <i class="bi bi-megaphone-fill me-2"></i> System Announcements
+        </h4>
+    </div>
+
+    <!-- Info Alert -->
+    <div class="alert alert-warning">
+        <i class="bi bi-info-circle me-2"></i>
+        Messages sent from here will be emailed to <strong>all active users</strong>.
+        Use this feature carefully.
+    </div>
+
+    <!-- Announcement Card -->
+    <div class="card">
+        <div class="card-header fw-semibold">
+            Create New Announcement
+        </div>
+        <div class="card-body">
+
+            <form method="post" action="{{ url_for('system_announcements') }}"
+                  onsubmit="return confirmSend();">
+
+                <!-- Subject -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Email Subject</label>
+                    <input type="text"
+                           name="subject"
+                           class="form-control"
+                           placeholder="System Maintenance Notification"
+                           required>
+                </div>
+
+                <!-- Message -->
+                <div class="mb-3">
+                    <label class="form-label fw-semibold">Announcement Message</label>
+                    <textarea name="message"
+                              class="form-control"
+                              rows="6"
+                              placeholder="Write the announcement that will be sent to all users..."
+                              required></textarea>
+                </div>
+
+                <!-- Send Button -->
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-danger px-4">
+                        <i class="bi bi-send-fill me-1"></i> Send Announcement
+                    </button>
+                </div>
+
+            </form>
+
+        </div>
+    </div>
+
+    <!-- Safety Note -->
+    <div class="mt-3 text-muted small">
+        <i class="bi bi-shield-exclamation me-1"></i>
+        This action cannot be undone. Consider informing users in advance.
+    </div>
+
+</div>
+
+<!-- Confirmation Script -->
+<script>
+    function confirmSend() {
+        return confirm(
+            "⚠️ This announcement will be emailed to ALL users.\n\n" +
+            "Are you sure you want to continue?"
+        );
+    }
+</script>
+{% endblock %}

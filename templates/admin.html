@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title|default('Admin Dashboard | Tender Analysis System') }}</title>
+    <!-- jQuery first, then Bootstrap CSS -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <!-- Bootstrap CSS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/css/bootstrap.min.css">
+    <!-- Select2 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap">
+
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <style>
+        body {
+            font-family: 'Avenir', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+        }
+
+        /* Slightly increase base font size for better readability */
+        body {
+            font-size: 0.95rem;
+        }
+
+        /* Make headings slightly more distinguished */
+        h1,
+        h2,
+        h3,
+        h4,
+        h5,
+        h6 {
+            font-weight: 500;
+        }
+
+        /* SIDEBAR NAVIGATION - Blue background with white text */
+        .sidebar .nav-link.active {
+            background-color: #6f42c1 !important;
+            color: white !important;
+            border-radius: 5px !important;
+            color: white;
+        }
+
+        .sidebar .nav-link:hover:not(.active) {
+            background-color: rgba(13, 110, 253, 0.1);
+            border-radius: 5px;
+        }
+
+        /* TABS NAVIGATION - Blue text with white background */
+        .nav-tabs .nav-link.active {
+            color: #6f42c1 !important;
+            background-color: #ffffff !important;
+            border-bottom-color: #ffffff !important;
+            font-weight: bold;
+            border-radius: 0;
+            border-top-left-radius: 5px;
+            border-top-right-radius: 5px;
+        }
+
+        .nav-tabs .nav-link:not(.active):hover {
+            color: #6f42c1;
+            background-color: rgba(13, 110, 253, 0.1);
+            border-color: #dee2e6 #dee2e6 #fff;
+        }
+
+        .nav-tabs .nav-link {
+            color: white;
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            margin-right: 3px;
+        }
+
+        .card-header.tab-header {
+            background-color: #f8f9fa;
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .tab-content {
+            padding: 1rem;
+            border-left: 1px solid #dee2e6;
+            border-right: 1px solid #dee2e6;
+            border-bottom: 1px solid #dee2e6;
+            border-radius: 0 0 0.25rem 0.25rem;
+        }
+
+        .sidebar {
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            position: fixed;
+        }
+
+        .card {
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .card-title {
+            color: #6f42c1;
+            font-weight: bold;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(13, 110, 253, 0.05);
+        }
+
+        .chat-messages {
+            border-radius: 8px;
+        }
+
+        /* Print styles */
+        @media print {
+
+            .sidebar,
+            .nav-tabs,
+            button,
+            .btn,
+            .no-print {
+                display: none !important;
+            }
+
+            .card {
+                border: 1px solid #ddd !important;
+                box-shadow: none !important;
+                break-inside: avoid;
+            }
+
+            .container {
+                width: 100% !important;
+                max-width: 100% !important;
+            }
+
+            .d-none {
+                display: block !important;
+            }
+
+            body {
+                font-size: 12pt;
+            }
+
+            h1,
+            h2,
+            h3 {
+                page-break-after: avoid;
+            }
+
+            .risk-items>div {
+                page-break-inside: avoid;
+            }
+        }
+
+
+        /* Popup Styles */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            display: none;
+        }
+
+        .loading-content {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            text-align: center;
+            font-family: sans-serif;
+        }
+
+        textarea {
+            width: 100%;
+            height: 100px;
+        }
+
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 10px;
+        }
+
+        th,
+        td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+
+        th {
+            background-color: #f2f2f2;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border: 1px solid #ddd;
+            white-space: pre-wrap;
+        }
+
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        .tab {
+            overflow: hidden;
+            border-bottom: 1px solid #ccc;
+            margin-bottom: 10px;
+        }
+
+        .tab button {
+            background: #f1f1f1;
+            border: none;
+            outline: none;
+            cursor: pointer;
+            padding: 10px 20px;
+            transition: 0.3s;
+        }
+
+        .tab button:hover {
+            background: #ddd;
+        }
+
+        .tab button.active {
+            background: #ccc;
+        }
+
+        .tabcontent {
+            display: none;
+            padding: 10px;
+        }
+
+        .tabcontent.active {
+            display: block;
+        }
+
+        .sql-table-wrapper {
+            max-height: 280px;
+            overflow-x: auto;
+            overflow-y: auto;
+            width: 100%;
+            margin-top: 10px;
+            white-space: nowrap;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar Navigation -->
+            <nav class="col-md-2 col-lg-2 d-md-block bg-light sidebar vh-80">
+                <div class="position-sticky pt-2">
+                    <div class="text-center mb-1">
+                        <img src="{{ url_for('static', filename='logo.png') }}" alt="Tender Analysis Logo"
+                            class="img-fluid" style="max-height: 70px;">
+                        <br><br>
+                    </div>
+                    <ul class="nav flex-column">
+                        <li class="nav-item mb-1">
+                            <a class="nav-link{% if request.endpoint == 'admin_dashboard_sql' %} active{% endif %}"
+                                href="{{ url_for('admin_dashboard_sql') }}">
+                                <i class="fas fa-home me-2"></i> <strong class="fs-8">Dashboard</strong>
+                            </a>
+                        </li>
+
+                        <!-- ✅ Manage Organizations -->
+                        <li class="nav-item mb-1">
+                            <a class="nav-link{% if request.endpoint == 'organization' %} active{% endif %}"
+                                href="{{ url_for('organization') }}">
+                                <i class="fas fa-building me-2"></i> <strong class="fs-8">Organizations</strong>
+                            </a>
+                        </li>
+
+                        <!-- ✅ Users — optional: can hide this if you only go via org “Manage” button -->
+                        <!-- <li class="nav-item mb-1">
+                            <a class="nav-link disabled text-muted" href="#" tabindex="-1" aria-disabled="true">
+                                <i class="fas fa-users-cog me-2"></i> <strong class="fs-8">Users (via Manage
+                                    Org)</strong>
+                            </a>
+                        </li> -->
+
+                        <li class="nav-item mb-1">
+                            <a class="nav-link{% if request.endpoint == 'manage_tenders' %} active{% endif %}"
+                                href="{{ url_for('manage_tenders') }}">
+                                <i class="fas fa-file-contract me-2"></i> <strong class="fs-8">Tenders</strong>
+                            </a>
+                        </li>
+
+                        <li class="nav-item mb-1">
+                            <a class="nav-link{% if request.endpoint == 'analytics_reports' %} active{% endif %}"
+                                href="{{ url_for('analytics_reports') }}">
+                                <i class="fas fa-chart-line me-2"></i> <strong class="fs-8">Analytics & Reports</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link{% if request.endpoint == 'fetch_gem_page' %} active{% endif %}"
+                                href="{{ url_for('fetch_gem_page') }}">
+                                <i class="bi bi-bullseye"></i> <strong class="fs-8">Fetch GEM Tenders</strong>
+                            </a>
+                        </li>
+
+                        <li class="nav-item mb-1">
+                            <a class="nav-link{% if request.endpoint == 'system_announcements' %} active{% endif %}"
+                                href="{{ url_for('system_announcements') }}">
+                                <i class="bi bi-megaphone-fill"></i> <strong class="fs-8">System Announcements</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link{% if request.endpoint == 'access_control' %} active{% endif %}"
+                                href="{{ url_for('access_control') }}">
+                                <i class="bi bi-toggle-on"></i> <strong class="fs-8">Feature Access Control</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link{% if request.endpoint == 'log_summary' %} active{% endif %}"
+                                href="{{ url_for('log_summary') }}">
+                                <i class="bi bi-journal-text me-2"></i> <strong class="fs-8">Log Summary</strong>
+                            </a>
+                        </li>
+                        <li class="nav-item mb-1">
+                            <a class="nav-link{% if request.endpoint == 'admin_upload_page' %} active{% endif %}"
+                                href="{{ url_for('admin_upload_page') }}">
+                                <i class="bi bi-upload me-2"></i> <strong class="fs-8">Upload Pricing Data</strong>
+                            </a>
+                        </li>
+
+                        <li class="nav-item mt-1">
+                            <a class="nav-link text-danger" href="{{ url_for('admin_logout') }}">
+                                <i class="fas fa-sign-out-alt me-1"></i> Logout
+                            </a>
+                        </li>
+                    </ul>
+
+
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+                {% block content %}
+                <div class="tab">
+                    <button id="SQLTabBtn" class="tablink" onclick="openTab(event, 'SQLTab')">PostgreSQL
+                        Console</button>
+                    <button id="SystemTabBtn" class="tablink" onclick="openTab(event, 'SystemTab')">Linux
+                        Status</button>
+                </div>
+
+                <div id="SQLTab" class="tabcontent">
+                    <form method="post" action="{{ url_for('admin_dashboard_sql') }}">
+                        <textarea name="sql" placeholder="Write your SQL here"></textarea><br>
+                        <button type="submit">Run SQL</button>
+                    </form>
+                    {% if sql_result %}
+                    <h4>SQL Result:</h4>
+                    <div class="sql-table-wrapper">
+                        {{ sql_result|safe }}
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div id="SystemTab" class="tabcontent">
+                    <form method="post" action="{{ url_for('admin_dashboard_system') }}">
+                        <button name="cmd" value="df -h">Disk Usage (df -h)</button>
+                        <button name="cmd" value="free -m">Memory (free -m)</button>
+                        <button name="cmd" value="uptime">Uptime</button>
+                        <button name="cmd" value="top -bn1 | head -20">Top Processes</button>
+                        <button name="cmd" value="docker ps">Docker Containers</button>
+                        <button name="cmd" value="psql --version">PostgreSQL Version</button>
+                    </form>
+                    {% if sys_result %}
+                    <h4>System Result:</h4>
+                    <pre>{{ sys_result }}</pre>
+                    {% endif %}
+                </div>
+                {% endblock %}
+            </main>
+        </div>
+    </div>
+
+    <!-- Loading Popup -->
+    <div id="loadingPopup" class="loading-overlay"
+        style="display:none; flex-direction: column; align-items: center; justify-content: center;">
+        <div class="loading-content" style="text-align:center; width: 350px;">
+            <p>Processing, please wait...</p>
+            <div id="progressBar"
+                style="width:100%; background-color:#ddd; border-radius:5px; overflow:hidden; margin-top:10px;">
+                <div id="pBar" style="width:1%; height:20px; background-color:#007bff;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var i = 0;
+        function showLoadingPopup() {
+            document.getElementById('loadingPopup').style.display = 'flex';
+            move();
+        }
+        function hideLoadingPopup() {
+            document.getElementById('loadingPopup').style.display = 'none';
+            document.getElementById("pBar").style.width = "1%";
+            i = 0;
+        }
+        function move() {
+            if (i == 0) {
+                i = 1;
+                var elem = document.getElementById("pBar");
+                var width = 1;
+                var id = setInterval(frame, 300);
+                function frame() {
+                    if (width >= 99) {
+                        clearInterval(id);
+                        i = 0;
+                    } else if (width < 50) width += 2;
+                    else if (width < 75) width += 1;
+                    else if (width < 90) width += 0.75;
+                    else width += 0.2;
+                    elem.style.width = width + "%";
+                }
+            }
+        }
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha3/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Select2 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', loadTenderSelector);
+        const urlPrefix = "{{ url_prefix }}";
+        async function loadTenderSelector() {
+            try {
+                const response = await fetch(urlPrefix + '/tenders');
+                if (!response.ok) throw new Error(`Server returned ${response.status}`);
+                const data = await response.json();
+                const selector = document.getElementById('tenderSelector');
+                if (data.tenders && data.tenders.length > 0) {
+                    let options = '<option value="">Select a tender...</option>';
+                    let currentTenderSelected = false;
+                    data.tenders.forEach(tender => {
+                        const isSelected = tender.is_active ? 'selected' : '';
+                        if (tender.is_active) currentTenderSelected = true;
+                        options += `<option value="${tender.id}" ${isSelected}>${tender.title} (${tender.created_at})</option>`;
+                    });
+                    selector.innerHTML = options;
+                    if (!currentTenderSelected && data.tenders.length > 0)
+                        selector.selectedIndex = 1;
+                } else selector.innerHTML = '<option value="">No tenders available</option>';
+            } catch (error) {
+                console.error('Error loading tenders:', error);
+                document.getElementById('tenderSelector').innerHTML = '<option value="">Error loading tenders</option>';
+            }
+        }
+
+        async function switchTender(tenderId) {
+            if (!tenderId) return;
+            try {
+                const response = await fetch(`${urlPrefix}/tenders/${tenderId}`, { method: 'GET' });
+                if (!response.ok) throw new Error(`Server returned ${response.status}`);
+                const data = await response.json();
+                if (data.redirect) window.location.href = data.redirect;
+            } catch (error) {
+                console.error('Error switching tender:', error);
+                alert('Error switching tender. Please try again.');
+            }
+        }
+    </script>
+
+    <script>
+        function openTab(evt, tabName) {
+            var i, tabcontent, tablinks;
+            tabcontent = document.getElementsByClassName("tabcontent");
+            for (i = 0; i < tabcontent.length; i++) {
+                tabcontent[i].classList.remove("active");
+            }
+            tablinks = document.getElementsByClassName("tablink");
+            for (i = 0; i < tablinks.length; i++) {
+                tablinks[i].classList.remove("active");
+            }
+            document.getElementById(tabName).classList.add("active");
+            if (evt) evt.currentTarget.classList.add("active");
+        }
+        window.onload = function () {
+            openTab(null, "{{ active_tab|default('SQLTab') }}");
+            document.getElementById("{{ active_tab|default('SQLTab') }}Btn").classList.add("active");
+        }
+    </script>
+</body>
+
+</html>

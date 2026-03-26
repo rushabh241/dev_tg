@@ -1,0 +1,2389 @@
+<!-- gem_tenders.html -->
+
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-1">
+    <div class="row mb-1">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h3>GeM Tenders</h3>
+                <p class="text-muted">Tenders downloaded from Government e-Marketplace (GeM) based on your service
+                    definition</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tenders Table -->
+    <div class="row mb-2">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <ul class="nav nav-tabs" id="tenderTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="matching-tab" data-bs-toggle="tab"
+                                data-bs-target="#matching" type="button" role="tab">
+                                <i class="fas fa-check-circle me-2 text-success"></i>Matching Tenders
+                                <span class="badge bg-success ms-2">{{ matching_tenders|length }}</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="valid-tab" data-bs-toggle="tab" data-bs-target="#valid"
+                                type="button" role="tab">
+                                <i class="fas fa-list me-2"></i>All Tenders
+                                <span class="badge bg-secondary ms-2">{{ valid_tenders|length }}</span>
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="expired-tab" data-bs-toggle="tab" data-bs-target="#expired"
+                                type="button" role="tab">
+                                <i class="bi bi-hourglass-bottom"></i> Due Date Passed Tenders
+                                <span class="badge bg-secondary ms-2">{{ expired_tenders|length }}</span>
+                            </button>
+                        </li>
+                        <!-- Added for demo organization check -->
+                        {% if org.name == 'Demo Organization' %}
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="fetch-tab" data-bs-toggle="tab" data-bs-target="#fetch"
+                                type="button" role="tab">
+                                <i class="bi bi-download me-2"></i> Fetch Tender From GemPortal
+                            </button>
+                        </li>
+                        {% endif %}
+                    </ul>
+
+                    <div class="tab-content p-3" id="tenderTabContent">
+                        <!-- Matching Tenders Tab -->
+                        <div class="tab-pane fade show active" id="matching" role="tabpanel">
+                            {% if matching_tenders %}
+                            <div class="mb-3">
+                                <input type="text" id="searchInput" class="form-control"
+                                    placeholder="Search description or match reason...">
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="tenderTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tender ID</th>
+                                            <th style="width: 30%;">Description</th>
+
+                                            <!-- 🔽 Clickable sortable header -->
+                                            <th style="width: 10%; cursor:pointer;" class="sort-due-date">
+                                                Due Date
+                                                <span class="dueDateArrow">↕</span>
+                                            </th>
+
+                                            <th style="width: 40%;">Match Reason</th>
+                                            <th style="width: 16%;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for tender in matching_tenders %}
+                                        <tr>
+                                            <td>{{ tender.tender_id }}</td>
+                                            <td style="width: 25%;">{{ tender.description }}</td>
+                                            <td style="width: 15%;">{{ tender.due_date }}</td>
+                                            <td style="width: 40%;">
+                                                {{ tender.match_reason.split('relevance.', 1)[1] if 'SHORTLIST by AI' in
+                                                tender.match_reason else tender.match_reason }}
+                                            </td>
+                                            <td>
+                                                {% if tender.pdf_path %}
+                                                {% set raw_path = tender.pdf_path.replace('\\', '/') %}
+                                                {% set clean_path = raw_path.replace('gem_bids/', '') %}
+                                                {% set clean_path = clean_path.replace('gem_bids\\', '') %}
+                                                {% set full_path = 'gem_bids/' + clean_path %}
+
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                    onclick="viewPdf('{{ url_prefix }}/view-pdf?path={{ full_path | urlencode }}')"
+                                                    title="View PDF">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </button>
+                                                {% if tender.is_analyzed %}
+                                                <button class="btn btn-sm btn-outline-success analyze-btn"
+                                                    style="color: aliceblue;" data-tender-id="{{ tender.tender_id }}"
+                                                    title="Analyze Tender">
+                                                    <i class="bi bi-eye"></i> Review
+                                                </button>
+                                                {% else %}
+                                                <button class="btn btn-sm btn-outline-success analyze-btn"
+                                                    style="color: aliceblue;" data-tender-id="{{ tender.tender_id }}"
+                                                    title="Analyze Tender">
+                                                    <i class="fas fa-magic"></i> Analyze
+                                                </button>
+                                                {% endif %}
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="fas fa-search fa-3x mb-3"></i>
+                                <h5>No matching tenders found</h5>
+                                <p>To get tenders, run the gem.py script manually</p>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- All Tenders Tab -->
+                        <div class="tab-pane fade show" id="valid" role="tabpanel">
+                            {% if valid_tenders %}
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="validTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tender ID</th>
+                                            <th>Description</th>
+                                            <th style="width: 10%;  cursor:pointer;" class="sort-due-date">
+                                                Due Date
+                                                <span class="dueDateArrow">↕</span>
+                                            </th>
+                                            <th style="width: 10%;">Match Status</th>
+                                            <th style="width: 10%;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for tender in valid_tenders %}
+                                        <tr>
+                                            <td>{{ tender.tender_id }}</td>
+                                            <td>{{ tender.description }}</td>
+                                            <td>{{ tender.due_date }}</td>
+                                            <td>
+                                                {% if tender.matches_services %}
+                                                <span class="badge bg-success">Match</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">No Match</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if tender.document_url %}
+                                                <a href="{{ tender.document_url }}" target="_blank"
+                                                    class="btn btn-sm btn-outline-primary me-1" title="View on GeM">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </a>
+                                                {% endif %}
+                                                {% if tender.pdf_path %}
+                                                {% set raw_path = tender.pdf_path.replace('\\', '/') %}
+                                                {% set clean_path = raw_path.replace('gem_bids/', '') %}
+                                                {% set clean_path = clean_path.replace('gem_bids\\', '') %}
+                                                {% set full_path = 'gem_bids/' + clean_path %}
+
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                    onclick="viewPdf('{{ url_prefix }}/view-pdf?path={{ full_path | urlencode }}')"
+                                                    title="View PDF">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </button>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="fas fa-search fa-3x mb-3"></i>
+                                <h5>No tenders found</h5>
+                                <p>To get tenders, run the gem.py script manually</p>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Due Date Passed Tenders Tab-->
+                        <div class="tab-pane fade" id="expired" role="tabpanel">
+                            {% if expired_tenders %}
+                            <div class="table-responsive">
+                                <table class="table table-hover" id="expiredTable">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Tender ID</th>
+                                            <th>Description</th>
+                                            <th style="width: 10%; cursor:pointer;" class="sort-due-date">
+                                                Due Date
+                                                <span class="dueDateArrow">↕</span>
+                                            </th>
+                                            <th style="width: 10%;">Match Status</th>
+                                            <th style="width: 10%;">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for tender in expired_tenders %}
+                                        <tr>
+                                            <td>{{ tender.tender_id }}</td>
+                                            <td>{{ tender.description }}</td>
+                                            <td>{{ tender.due_date }}</td>
+                                            <td>
+                                                {% if tender.matches_services %}
+                                                <span class="badge bg-success">Match</span>
+                                                {% else %}
+                                                <span class="badge bg-secondary">No Match</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if tender.document_url %}
+                                                <a href="{{ tender.document_url }}" target="_blank"
+                                                    class="btn btn-sm btn-outline-primary me-1" title="View on GeM">
+                                                    <i class="fas fa-external-link-alt"></i>
+                                                </a>
+                                                {% endif %}
+                                                {% if tender.pdf_path %}
+                                                {% set raw_path = tender.pdf_path.replace('\\', '/') %}
+                                                {% set clean_path = raw_path.replace('gem_bids/', '') %}
+                                                {% set clean_path = clean_path.replace('gem_bids\\', '') %}
+                                                {% set full_path = 'gem_bids/' + clean_path %}
+
+                                                <button class="btn btn-sm btn-outline-secondary"
+                                                    onclick="viewPdf('{{ url_prefix }}/view-pdf?path={{ full_path | urlencode }}')"
+                                                    title="View PDF">
+                                                    <i class="fas fa-file-pdf"></i>
+                                                </button>
+                                                {% endif %}
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% else %}
+                            <div class="text-center py-5 text-muted">
+                                <i class="fas fa-search fa-3x mb-3"></i>
+                                <h5>No tenders found</h5>
+                                <p>To get tenders, run the gem.py script manually</p>
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Only For Demo -->
+                        <!-- <div class="tab-pane fade show active" role="tabpanel">
+                        </div> -->
+
+                        {% if org.name == 'Demo Organization'%}
+                        <!-- Add this tab content in the tab-content div, after the expired tab -->
+                        <div class="tab-pane fade" id="fetch" role="tabpanel">
+                            <div class="row justify-content-center">
+                                <div class="col-md-8">
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <div class="alert alert-info">
+                                                <i class="bi bi-info-circle me-2"></i>
+                                                The process may take a few minutes to complete.
+                                            </div>
+
+                                            <form id="fetchGemForm">
+                                                <div class="mb-3">
+                                                    <label for="searchKeyword" class="form-label">
+                                                        <i class="bi bi-search me-1"></i>Search Keyword
+                                                    </label>
+                                                    <input type="text" class="form-control" id="searchKeyword"
+                                                        placeholder="Enter keyword (e.g., 'laptop', 'construction') or leave empty for all tenders">
+                                                </div>
+
+                                                <div class="row">
+                                                    <div class="col-md-6 mb-3">
+                                                        <label for="maxTenders" class="form-label">
+                                                            <i class="bi bi-list-ol me-1"></i>Maximum Tenders to Fetch
+                                                        </label>
+                                                        <input type="number" class="form-control" id="maxTenders"
+                                                            value="10" min="1" max="100">
+                                                    </div>
+
+                                                </div>
+
+                                                <div class="d-grid gap-2">
+                                                    <button type="submit" class="btn btn-success btn-lg" id="fetchBtn">
+                                                        <i class="bi bi-cloud-download me-2"></i>Start Fetching Tenders
+                                                    </button>
+                                                </div>
+                                            </form>
+
+                                            <div id="fetchProgress" class="mt-4" style="display: none;">
+                                                <div class="card">
+                                                    <div class="card-body text-center">
+                                                        <div class="spinner-border text-primary mb-3" role="status">
+                                                            <span class="visually-hidden">Loading...</span>
+                                                        </div>
+                                                        <h5 class="card-title">Fetching Tenders...</h5>
+                                                        <p id="progressMessage" class="card-text">Starting the GeM
+                                                            tender fetching process...</p>
+                                                        <div class="progress mb-3">
+                                                            <div class="progress-bar progress-bar-striped progress-bar-animated"
+                                                                style="width: 100%"></div>
+                                                        </div>
+                                                        <p class="text-muted small">This process runs in the background.
+                                                            You can continue using the application.</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF Viewer Modal -->
+    <div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Tender Document</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 75vh;"></iframe>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    function viewPdf(pdfUrl) {
+        document.getElementById('pdfViewerFrame').src = pdfUrl;
+        const modal = new bootstrap.Modal(document.getElementById('pdfViewerModal'));
+        modal.show();
+    }
+
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        const container = document.querySelector('.container');
+        container.insertBefore(alertDiv, container.firstChild);
+
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 500);
+        }, 5000);
+    }
+
+    document.getElementById('searchInput')?.addEventListener('keyup', function () {
+        const filter = this.value.toLowerCase();
+        const rows = document.querySelectorAll('#matching tbody tr');
+
+        rows.forEach(row => {
+            const description = row.cells[1].textContent.toLowerCase();
+            const reason = row.cells[3].textContent.toLowerCase();
+            row.style.display = (description.includes(filter) || reason.includes(filter)) ? '' : 'none';
+        });
+    });
+
+    let analysisAbortController = null;
+
+    document.addEventListener('click', async (e) => {
+        const btn = e.target.closest('.analyze-btn');
+        if (!btn) return;
+
+        const tenderId = btn.dataset.tenderId;
+        btn.disabled = true;
+
+        let analyze_button = setTimeout(() => {
+            btn.innerText = 'Analyzing...';
+        }, 300);
+
+        let popupTimeout = setTimeout(() => {
+            showLoadingPopup();
+        }, 300);
+
+        // Create a new AbortController for this analysis
+        analysisAbortController = new AbortController();
+
+        try {
+            const response = await fetch('{{ url_prefix }}/analyze_tender', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ tender_id: tenderId }),
+                signal: analysisAbortController.signal // Pass the abort signal
+            });
+
+            const result = await response.json();
+            console.log('Backend Response:', result);
+
+            if (result.redirect_url) {
+                window.location.href = result.redirect_url;
+            } else if (result.error) {
+                alert(result.error);
+            }
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                console.log('Analysis cancelled - user navigated away');
+            } else {
+                console.error('Error sending tender ID:', error);
+                alert('Error analyzing tender');
+            }
+        } finally {
+            clearTimeout(analyze_button);
+            clearTimeout(popupTimeout);
+            hideLoadingPopup();
+            btn.disabled = false;
+        }
+    });
+
+    // Stop analysis when user navigates away
+    window.addEventListener('beforeunload', () => {
+        if (analysisAbortController) {
+            analysisAbortController.abort();
+        }
+    });
+
+    // Also handle back button and link clicks
+    window.addEventListener('popstate', () => {
+        if (analysisAbortController) {
+            analysisAbortController.abort();
+        }
+    });
+
+    let dueDateAsc = true;
+
+    function parseDDMMYYYY(dateStr) {
+        if (!dateStr) return new Date(0); // fallback for empty cells
+        const [day, month, year] = dateStr.split('-').map(Number);
+        return new Date(year, month - 1, day);
+    }
+
+    /**
+     * Sorts the given table by the Due Date column and updates the arrow.
+     * @param {HTMLElement} table The table element to sort.
+     * @param {boolean} ascending True for ascending, false for descending.
+     * @param {HTMLElement} header The header element to update the arrow on.
+     */
+    function sortTableByDueDate(table, ascending, header) {
+        const tbody = table.querySelector('tbody');
+        const rows = Array.from(tbody.querySelectorAll('tr'));
+
+        rows.sort((a, b) => {
+            let dateA = parseDDMMYYYY(a.cells[2].innerText.trim());
+            let dateB = parseDDMMYYYY(b.cells[2].innerText.trim());
+            return ascending ? dateA - dateB : dateB - dateA;
+        });
+
+        // Re-append rows in the new order
+        rows.forEach(r => tbody.appendChild(r));
+
+        // Update arrow for the current header
+        if (header) {
+            const arrow = header.querySelector('.dueDateArrow');
+            // Set the arrow to reflect the *current* sort
+            arrow.innerText = ascending ? "↑" : "↓";
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.sort-due-date').forEach(header => {
+            const table = header.closest('table');
+            const tableId = table.id;
+            const storageKey = `sortOrder_${tableId}`;
+
+            // --- 1. Load and Apply Initial Sort State ---
+
+            // 'savedState' is the sort order that was LAST APPLIED before refresh/navigation.
+            // Default to 'asc' if no state is saved (or no specific default is required).
+            let savedState = localStorage.getItem(storageKey) || 'asc';
+            let currentlyDisplayedAsc = savedState === 'asc'; // What the user *sees* now
+
+            // Apply the saved state immediately upon page load
+            if (table.querySelector('tbody tr')) {
+                sortTableByDueDate(table, currentlyDisplayedAsc, header);
+            }
+
+            // This variable tracks the sort order for the *next* click, which must be the opposite 
+            // of the currently displayed order to ensure immediate reversal.
+            let nextClickAsc = !currentlyDisplayedAsc;
+
+
+            // --- 2. Add Click Listener for Sorting ---
+            header.addEventListener('click', function () {
+                // 'nextClickAsc' holds the state that should be applied now.
+                sortTableByDueDate(table, nextClickAsc, header);
+
+                // Save the *applied* state (nextClickAsc) to localStorage
+                localStorage.setItem(storageKey, nextClickAsc ? 'asc' : 'desc');
+
+                // Toggle the state for the *next* click
+                nextClickAsc = !nextClickAsc;
+            });
+        });
+    });
+
+    // Fetch GeM Tenders - Demo Organization Only
+    document.getElementById('fetchGemForm')?.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const searchKeyword = document.getElementById('searchKeyword').value.trim();
+        const maxTenders = document.getElementById('maxTenders').value;
+        const fetchBtn = document.getElementById('fetchBtn');
+
+        // Disable button to prevent multiple submissions
+        fetchBtn.disabled = true;
+
+        try {
+            const response = await fetch('{{ url_prefix }}/fetch-gem-tenders-demo', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    search_keyword: searchKeyword || "none",
+                    max_tenders: parseInt(maxTenders) || 10
+                })
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                showAlert('success', result.message || 'Tender fetching started successfully.');
+
+                // Optional: auto-reset form after a short delay
+                setTimeout(() => {
+                    document.getElementById('fetchGemForm').reset();
+                    fetchBtn.disabled = false;
+                }, 2000);
+
+            } else {
+                showAlert('danger', result.error || 'Failed to start fetching tenders');
+                fetchBtn.disabled = false;
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            showAlert('danger', 'Network error. Please try again.');
+            fetchBtn.disabled = false;
+        }
+    });
+
+</script>
+{% endblock %}
+
+
+
+
+
+
+<!-- admin_organization_management.html -->
+
+{% extends "admin.html" %}
+{% block content %}
+
+<div class="container mt-4">
+  {% if mode == 'list' %}
+  <!-- ========== LIST ORGANIZATIONS ========== -->
+  <div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+      <h5 class="mb-0">Organizations</h5>
+      <div>
+        <a href="{{ url_for('add_organization') }}" class="btn btn-primary btn-sm">
+          <i class="fas fa-plus-circle me-1"></i> Add Organization
+        </a>
+      </div>
+    </div>
+    <div class="card-body">
+      <table class="table table-hover">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Created</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for org in organizations %}
+          <tr>
+            <td>{{ org.id }}</td>
+            <td>{{ org.name }}</td>
+            <td>{{ org.description or '-' }}</td>
+            <td>{{ org.created_at.strftime('%Y-%m-%d') if org.created_at else '-' }}</td>
+            <td>
+              <a class="btn btn-sm btn-outline-primary" href="{{ url_for('manage_organization', org_id=org.id) }}">
+                Manage
+              </a>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="5" class="text-center text-muted">No organizations found.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  {% elif mode == 'add' %}
+  <!-- ========== ADD ORGANIZATION (MANUAL) ========== -->
+  <div class="container mt-4 mb-5">
+    <h3 class="mb-3">Add New Organization</h3>
+    <a href="{{ url_for('organization') }}" class="btn btn-sm btn-secondary mb-3">← Back</a>
+
+    <form method="POST" action="{{ url_for('add_organization') }}">
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Organization Details</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Organization Name <span class="text-danger">*</span></label>
+            <input type="text" name="org_name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="org_description" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+
+      
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h5>Select Plan</h5>
+        </div>
+        <div class="card-body">
+          <div class="row">
+            <div class="col-md-6">
+              <div class="mb-3">
+                <label class="form-label">Plan <span class="text-danger">*</span></label>
+                <select name="plan" id="plan" class="form-select" required>
+                  <option value="">-- Select Plan --</option>
+                  <option value="Bronze">Bronze - ₹5,000/month</option>
+                  <option value="Silver">Silver - ₹20,000/month</option>
+                  <option value="Gold">Gold - ₹50,000/month</option>
+                  <option value="Platinum">Platinum</option>
+                </select>
+              </div>
+
+              <!-- Selected Plan Details -->
+              <div class="plan-details mt-3" style="display: none;">
+                <div class="alert alert-light border">
+                  <div class="d-flex justify-content-between align-items-center mb-2">
+                    <h6 class="mb-0">Selected Plan Features:</h6>
+                    <button type="button" class="btn btn-sm btn-outline-primary" id="edit-plan-btn"
+                      style="display: none;">
+                      <i class="bi bi-pencil"></i> Edit Plan
+                    </button>
+                  </div>
+                  <div class="row small">
+                    <div class="col-6">
+                      <div class="mb-1">Services:</div>
+                      <div class="mb-1">Users:</div>
+                      <div class="mb-1">GeM Alerts:</div>
+                      <div class="mb-1">Tenders:</div>
+                      <div class="mb-1">External Tenders:</div>
+                    </div>
+                    <div class="col-6">
+                      <div class="mb-1"><strong id="services-limit"></strong></div>
+                      <div class="mb-1"><strong id="users-limit"></strong></div>
+                      <div class="mb-1"><strong id="alerts-limit"></strong></div>
+                      <div class="mb-1"><strong id="tenders-limit"></strong></div>
+                      <div class="mb-1"><strong id="external-tenders"></strong></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <label class="form-label">For how many Months? <span class="text-danger">*</span></label>
+              <input type="number" id="months" name="months" class="form-control" min="1">
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card shadow-sm mb-4" id="services-section" style="display: none;">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">
+            Industries
+            <small class="text-muted ms-2">(Industries added: <span id="service-count">0</span>/<span
+                id="service-limit">0</span>)</small>
+          </h5>
+          <button type="button" class="btn btn-primary btn-sm" id="add-service-btn" style="display: none;">
+            <i class="bi bi-plus-circle"></i> Add Industry
+          </button>
+        </div>
+        <div class="card-body">
+          <div id="services-container">
+            <div class="alert alert-info">
+              <i class="bi bi-info-circle"></i> Select a plan to configure services.
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success btn-lg">Save Organization</button>
+        <a href="{{ url_for('organization') }}" class="btn btn-secondary btn-lg">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+
+  <!-- Add User Modal -->
+  <div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add User</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="userServiceIndex">
+          <div class="mb-3">
+            <label class="form-label">Username <span class="text-danger">*</span></label>
+            <input type="text" id="user_username" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" id="user_email" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password <span class="text-danger">*</span></label>
+            <input type="text" id="user_password" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Role</label>
+            <select id="user_role" class="form-select">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveUserBtn">Add User</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Constraint Modal -->
+  <div class="modal fade" id="addConstraintModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Constraint</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="constraintServiceIndex">
+          <div class="mb-3">
+            <label class="form-label">Category</label>
+            <select id="constraint_category" class="form-select">
+              <option value="financial">Financial</option>
+              <option value="technical">Technical</option>
+              <option value="legal">Legal</option>
+              <option value="other">Other</option>
+            </select>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description <span class="text-danger">*</span></label>
+            <textarea id="constraint_desc" class="form-control" rows="3" required></textarea>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveConstraintBtn">Add Constraint</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Search Config Modal -->
+  <div class="modal fade" id="addSearchConfigModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Search Configuration</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="searchConfigServiceIndex">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">Search Keyword <span class="text-danger">*</span></label>
+              <textarea id="sc_keyword" class="form-control" rows="3" required></textarea>
+              <small class="text-muted">Enter keywords separated by commas or new lines</small>
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Max Tenders</label>
+              <input type="number" id="sc_max" class="form-control" value="30" min="1">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Execution Time <span class="text-danger">*</span></label>
+              <input type="time" id="sc_time" class="form-control">
+            </div>
+            <div class="col-md-3">
+              <label class="form-label">Active?</label>
+              <select id="sc_active" class="form-select">
+                <option value="1" selected>Yes</option>
+                <option value="0">No</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveSearchConfigBtn">Add Config</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Notification Recipient Modal -->
+  <div class="modal fade" id="addRecipientModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Notification Recipient</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="recipientServiceIndex">
+          <input type="hidden" id="recipientConfigIndex">
+          <div class="mb-3">
+            <label class="form-label">Name <span class="text-danger">*</span></label>
+            <input type="text" id="recipient_name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email <span class="text-danger">*</span></label>
+            <input type="email" id="recipient_email" class="form-control" required>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="saveRecipientBtn">Add Recipient</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Plan Modal -->
+  <div class="modal fade" id="editPlanModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Edit Plan Details</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Industry Limit <span class="text-danger">*</span></label>
+            <input type="number" id="edit-services" class="form-control" min="1" placeholder="Enter number" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Users Limit <span class="text-danger">*</span></label>
+            <input type="text" id="edit-users" class="form-control" placeholder="e.g., 10 or Unlimited" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">GeM Alerts Configuration <span class="text-danger">*</span></label>
+            <input type="text" id="edit-alerts" class="form-control" placeholder="e.g., 1 search/day" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Tenders Limit <span class="text-danger">*</span></label>
+            <input type="text" id="edit-tenders" class="form-control" placeholder="e.g., Up to 100/month" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">External Tenders <span class="text-danger">*</span></label>
+            <select id="edit-external" class="form-select" required>
+              <option value="">-- Select --</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" id="savePlanChanges">Save Changes</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- JavaScript -->
+  <script>
+    document.addEventListener("DOMContentLoaded", async function () {
+      // Plan configuration
+      
+      let planConfig = {};
+
+      async function loadPlanConfig() {
+        try 
+         {
+          const response = await fetch("/admin/get-plans");
+          planConfig = await response.json();
+          console.log("Plan config loaded:", planConfig);
+        } catch (err) {
+          console.error("Failed to load plan config", err);
+          alert("Unable to load plan configuration. Please try again.");
+        }
+      }
+
+      await loadPlanConfig();
+
+      // Current plan configuration (can be modified)
+      let currentPlanConfig = {};
+      let isPlanEdited = false; // Flag to track if Platinum plan has been edited
+
+      // Elements
+      const planSelect = document.getElementById('plan');
+      const servicesSection = document.getElementById('services-section');
+      const addServiceBtn = document.getElementById('add-service-btn');
+      const serviceCountEl = document.getElementById('service-count');
+      const serviceLimitEl = document.getElementById('service-limit');
+      const servicesContainer = document.getElementById('services-container');
+      const editPlanBtn = document.getElementById('edit-plan-btn');
+
+      // Services data
+      let services = [];
+
+      // Modal variables
+      let addUserModal, addConstraintModal, addSearchConfigModal, addRecipientModal, editPlanModal;
+
+      // Initialize modals when DOM is loaded
+      function initializeModals() {
+        addUserModal = new bootstrap.Modal(document.getElementById('addUserModal'));
+        addConstraintModal = new bootstrap.Modal(document.getElementById('addConstraintModal'));
+        addSearchConfigModal = new bootstrap.Modal(document.getElementById('addSearchConfigModal'));
+        addRecipientModal = new bootstrap.Modal(document.getElementById('addRecipientModal'));
+        editPlanModal = new bootstrap.Modal(document.getElementById('editPlanModal'));
+      }
+
+      // Initialize modals
+      initializeModals();
+
+      // Plan change handler
+      planSelect.addEventListener('change', function () {
+        const selectedPlan = this.value;
+
+        if (selectedPlan) {
+          // Create a copy of the plan config
+          currentPlanConfig = JSON.parse(JSON.stringify(planConfig[selectedPlan]));
+
+          // Reset edited flag when plan changes
+          isPlanEdited = false;
+
+          // Show/hide Edit Plan button (only for Platinum)
+          if (selectedPlan === 'Platinum') {
+            editPlanBtn.style.display = 'block';
+            addServiceBtn.style.display = 'block';
+            // Disable add service button initially for Platinum
+            addServiceBtn.disabled = true;
+          } else {
+            editPlanBtn.style.display = 'none';
+            addServiceBtn.style.display = 'none';
+            isPlanEdited = true;
+          }
+
+          // Update plan details
+          updatePlanDetailsDisplay(currentPlanConfig);
+          document.querySelector('.plan-details').style.display = 'block';
+
+          // Show services section and set limits
+          servicesSection.style.display = 'block';
+
+          // For Platinum, show "Unlimited", for others show the number
+          if (selectedPlan === 'Platinum') {
+            serviceLimitEl.textContent = 'Unlimited';
+          } else {
+            serviceLimitEl.textContent = currentPlanConfig.services;
+          }
+
+          // Clear existing services
+          clearAllServices();
+
+          // For fixed plans (Bronze, Silver, Gold), create service blocks automatically
+          if (selectedPlan !== 'Platinum') {
+            const numServices = currentPlanConfig.services;
+            for (let i = 0; i < numServices; i++) {
+              services.push({
+                name: `Industry ${i + 1}`,
+                definition: '',
+                users: [],
+                constraints: [],
+                searchConfigs: []
+              });
+              renderServiceCard(i);
+            }
+            updateServiceCount();
+          } else {
+            // For Platinum, just update the count and show add button
+            updateServiceCount();
+          }
+        } else {
+          servicesSection.style.display = 'none';
+          document.querySelector('.plan-details').style.display = 'none';
+          editPlanBtn.style.display = 'none';
+          addServiceBtn.style.display = 'none';
+          clearAllServices();
+        }
+      });
+
+      // Edit plan button handler (only for Platinum)
+      editPlanBtn.addEventListener('click', function () {
+        if (!planSelect.value) {
+          alert('Please select a plan first');
+          return;
+        }
+
+        // Fill modal with current values - empty placeholders for Platinum
+        if (planSelect.value === 'Platinum') {
+          document.getElementById('edit-services').value = '';
+          document.getElementById('edit-users').value = '';
+          document.getElementById('edit-alerts').value = '';
+          document.getElementById('edit-tenders').value = '';
+          document.getElementById('edit-external').value = '';
+        } else {
+          // For other plans, show current values
+          document.getElementById('edit-services').value = currentPlanConfig.services;
+          document.getElementById('edit-users').value = currentPlanConfig.users;
+          document.getElementById('edit-alerts').value = currentPlanConfig.alerts;
+          document.getElementById('edit-tenders').value = currentPlanConfig.tenders;
+          document.getElementById('edit-external').value = currentPlanConfig.externalTenders;
+        }
+
+        editPlanModal.show();
+      });
+
+      // Save plan changes handler (only for Platinum)
+      document.getElementById('savePlanChanges').addEventListener('click', function () {
+        // Get values from modal
+        const servicesVal = document.getElementById('edit-services').value.trim();
+        const usersVal = document.getElementById('edit-users').value.trim();
+        const alertsVal = document.getElementById('edit-alerts').value.trim();
+        const tendersVal = document.getElementById('edit-tenders').value.trim();
+        const externalVal = document.getElementById('edit-external').value;
+
+        // Validate required fields
+        if (!servicesVal || !usersVal || !alertsVal || !tendersVal || !externalVal) {
+          alert('Please fill all required fields');
+          return;
+        }
+
+        // Validate services is a positive number
+        const servicesNum = parseInt(servicesVal);
+        if (isNaN(servicesNum) || servicesNum < 1) {
+          alert('Services limit must be a number greater than 0');
+          return;
+        }
+
+        // Update current plan config
+        currentPlanConfig.services = servicesNum;
+        currentPlanConfig.users = usersVal;
+        currentPlanConfig.alerts = alertsVal;
+        currentPlanConfig.tenders = tendersVal;
+        currentPlanConfig.externalTenders = externalVal;
+
+        // Mark plan as edited
+        isPlanEdited = true;
+
+        // Update display
+        updatePlanDetailsDisplay(currentPlanConfig);
+
+        // Update service limit display
+        serviceLimitEl.textContent = currentPlanConfig.services;
+
+        // Enable add service button
+        addServiceBtn.disabled = false;
+        addServiceBtn.title = "";
+
+        // Update service count if services were reduced
+        if (services.length > currentPlanConfig.services) {
+          // Remove excess services
+          services = services.slice(0, currentPlanConfig.services);
+
+          // Re-render all services
+          servicesContainer.innerHTML = '';
+          services.forEach((_, index) => {
+            renderServiceCard(index);
+          });
+
+          if (services.length === 0) {
+            servicesContainer.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> No services added yet. Click \'Add Service\' to begin.</div>';
+          }
+
+          updateServiceCount();
+        }
+
+        editPlanModal.hide();
+      });
+
+      // Add service button handler (only for Platinum)
+      addServiceBtn.addEventListener('click', function () {
+        if (!planSelect.value) {
+          alert('Please select a plan first');
+          return;
+        }
+
+        // Check if Platinum plan has been edited and has services limit set
+        if (planSelect.value === 'Platinum') {
+          if (!isPlanEdited) {
+            alert('Please edit the plan first to set service limits before adding services.');
+            return;
+          }
+
+          if (!currentPlanConfig.services || currentPlanConfig.services === 'Unlimited') {
+            alert('Please set a services limit in the plan configuration first.');
+            return;
+          }
+        }
+
+        const servicesLimit = parseInt(currentPlanConfig.services);
+
+        // Check service limit
+        if (!isNaN(servicesLimit) && services.length >= servicesLimit) {
+          alert(`Plan limit reached! Current plan allows maximum ${servicesLimit} services.`);
+          return;
+        }
+
+        // Add new service
+        const serviceIndex = services.length;
+        services.push({
+          name: `Industry ${serviceIndex + 1}`,
+          definition: '',
+          users: [],
+          constraints: [],
+          searchConfigs: []
+        });
+
+        // Render service card
+        renderServiceCard(serviceIndex);
+        updateServiceCount();
+      });
+
+      // Save user handler
+      document.getElementById('saveUserBtn').addEventListener('click', function () {
+        const serviceIndex = parseInt(document.getElementById('userServiceIndex').value);
+        const username = document.getElementById('user_username').value.trim();
+        const email = document.getElementById('user_email').value.trim();
+        const password = document.getElementById('user_password').value.trim();
+        const role = document.getElementById('user_role').value;
+
+        if (!username || !email || !password) {
+          alert('Please fill all required fields');
+          return;
+        }
+
+        // Check user limit
+        const service = services[serviceIndex];
+        const plan = planSelect.value;
+        const userLimit = currentPlanConfig.users;
+
+        // Calculate total users across all services for this organization
+        let totalUsers = 0;
+        services.forEach(s => {
+          totalUsers += s.users.length;
+        });
+
+        // Check user limit for non-unlimited plans
+        if (userLimit !== 'Unlimited' && userLimit !== '') {
+          const limitNum = parseInt(userLimit);
+          if (!isNaN(limitNum) && totalUsers >= limitNum) {
+            alert(`User limit reached! Current plan allows maximum ${limitNum} users.`);
+            return;
+          }
+        }
+
+        // Add user to service
+        service.users.push({ username, email, password, role });
+
+        // Update service card
+        updateServiceCard(serviceIndex);
+
+        // Clear form and close modal
+        document.getElementById('user_username').value = '';
+        document.getElementById('user_email').value = '';
+        document.getElementById('user_password').value = '';
+        addUserModal.hide();
+      });
+
+      // Save constraint handler
+      document.getElementById('saveConstraintBtn').addEventListener('click', function () {
+        const serviceIndex = parseInt(document.getElementById('constraintServiceIndex').value);
+        const category = document.getElementById('constraint_category').value;
+        const description = document.getElementById('constraint_desc').value.trim();
+
+        if (!description) {
+          alert('Description is required');
+          return;
+        }
+
+        // Add constraint to service
+        services[serviceIndex].constraints.push({ category, description });
+
+        // Update service card
+        updateServiceCard(serviceIndex);
+
+        // Clear form and close modal
+        document.getElementById('constraint_desc').value = '';
+        addConstraintModal.hide();
+      });
+
+      // Save search config handler
+      document.getElementById('saveSearchConfigBtn').addEventListener('click', function () {
+        const serviceIndex = parseInt(document.getElementById('searchConfigServiceIndex').value);
+        const keyword = document.getElementById('sc_keyword').value.trim();
+        const max = document.getElementById('sc_max').value;
+        const time = document.getElementById('sc_time').value;
+        const active = document.getElementById('sc_active').value;
+
+        if (!keyword) {
+          alert('Search keyword is required');
+          return;
+        }
+
+        // Add search config to service
+        services[serviceIndex].searchConfigs.push({
+          keyword,
+          max,
+          time,
+          active,
+          recipients: []
+        });
+
+        // Update service card
+        updateServiceCard(serviceIndex);
+
+        // Clear form and close modal
+        document.getElementById('sc_keyword').value = '';
+        document.getElementById('sc_time').value = '';
+        addSearchConfigModal.hide();
+      });
+
+      // Save recipient handler
+      document.getElementById('saveRecipientBtn').addEventListener('click', function () {
+        const serviceIndex = parseInt(document.getElementById('recipientServiceIndex').value);
+        const configIndex = parseInt(document.getElementById('recipientConfigIndex').value);
+        const name = document.getElementById('recipient_name').value.trim();
+        const email = document.getElementById('recipient_email').value.trim();
+
+        if (!name || !email) {
+          alert('Please fill all required fields');
+          return;
+        }
+
+        // Add recipient to search config
+        services[serviceIndex].searchConfigs[configIndex].recipients.push({ name, email });
+
+        // Update service card
+        updateServiceCard(serviceIndex);
+
+        // Clear form and close modal
+        document.getElementById('recipient_name').value = '';
+        document.getElementById('recipient_email').value = '';
+        addRecipientModal.hide();
+      });
+
+      // Helper functions
+      function updatePlanDetailsDisplay(config) {
+        document.getElementById('services-limit').textContent = config.services || '';
+        document.getElementById('users-limit').textContent = config.users || '';
+        document.getElementById('alerts-limit').textContent = config.alerts || '';
+        document.getElementById('tenders-limit').textContent = config.tenders || '';
+        document.getElementById('external-tenders').textContent = config.externalTenders || '';
+      }
+
+      function updateServiceCount() {
+        serviceCountEl.textContent = services.length;
+
+        // Update add button state for Platinum only
+        if (planSelect.value === 'Platinum') {
+          if (!isPlanEdited || !currentPlanConfig.services || currentPlanConfig.services === 'Unlimited') {
+            addServiceBtn.disabled = true;
+            addServiceBtn.title = "Please edit the plan first to set service limits";
+          } else {
+            const servicesLimit = parseInt(currentPlanConfig.services);
+            if (!isNaN(servicesLimit)) {
+              addServiceBtn.disabled = services.length >= servicesLimit;
+              addServiceBtn.title = services.length >= servicesLimit ?
+                `Plan limit reached! Maximum ${servicesLimit} services allowed` : "";
+            }
+          }
+        }
+      }
+
+      function clearAllServices() {
+        services = [];
+        servicesContainer.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> Select a plan to configure services.</div>';
+        updateServiceCount();
+      }
+
+      function renderServiceCard(serviceIndex) {
+        // Remove default message if present
+        const alert = servicesContainer.querySelector('.alert');
+        if (alert && alert.textContent.includes('Select a plan')) {
+          servicesContainer.innerHTML = '';
+        }
+
+        const service = services[serviceIndex];
+        const cardId = `service-card-${serviceIndex}`;
+        const collapseId = `service-collapse-${serviceIndex}`;
+
+        const card = document.createElement('div');
+        card.className = 'card mb-4 border';
+        card.id = cardId;
+        card.innerHTML = `
+        <div class="card-header bg-light">
+          <div class="d-flex justify-content-between align-items-center">
+            <div class="d-flex align-items-center" style="flex: 1;">
+              <div class="d-flex align-items-center me-3">
+                <button class="btn btn-link text-decoration-none text-dark p-0 me-2" 
+                        type="button" 
+                        data-bs-toggle="collapse" 
+                        data-bs-target="#${collapseId}"
+                        aria-expanded="true">
+                  <i class="bi bi-chevron-down fs-6"></i>
+                </button>
+                <div class="d-flex align-items-center">
+                </div>
+              </div>
+            </div>
+            <div class="d-flex align-items-center">
+              <button type="button" class="btn btn-sm btn-outline-danger" 
+                      onclick="removeService(${serviceIndex})">
+                <i class="bi bi-trash"></i> Remove
+              </button>
+            </div>
+          </div>
+        </div>
+        <div class="collapse show" id="${collapseId}">
+          <div class="card-body">
+            <!-- Service Product Definition (Full width) -->
+            <div class="mb-4">
+              <label class="form-label fw-bold">Industry Name</label>
+              <input type="text" name="industry_name" class="form-control" placeholder="Enter industry name..." required>
+              <label class="form-label fw-bold">Service Product Definition</label>
+              <textarea class="form-control service-definition" 
+                        rows="3" 
+                        data-index="${serviceIndex}"
+                        placeholder="Enter service/product definition..."
+                        name="service_definition"
+                        oninput="updateServiceDefinition(${serviceIndex}, this.value)">${service.definition}</textarea>
+            </div>
+            
+            <!-- Users and Constraints in single row -->
+            <div class="row mb-4">
+              <div class="col-md-6">
+                <div class="card h-100 border-light">
+                  <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <div>
+                        <strong>Users</strong>
+                        <small class="text-muted ms-2">(Users added: <span id="user-count-${serviceIndex}">${service.users.length}</span>/${getUserLimitPerService()})</small>
+                      </div>
+                      <button type="button" class="btn btn-sm btn-primary" 
+                              onclick="openAddUserModal(${serviceIndex})"
+                              ${isAddUserDisabled(serviceIndex) ? 'disabled' : ''}>
+                        <i class="bi bi-plus"></i> Add User
+                      </button>
+                    </div>
+                  </div>
+                  <div class="card-body p-3">
+                    <div id="users-list-${serviceIndex}" class="list-group list-group-flush">
+                      ${renderUsersList(serviceIndex)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              <div class="col-md-6">
+                <div class="card h-100 border-light">
+                  <div class="card-header bg-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                      <strong>Constraints</strong>
+                      <button type="button" class="btn btn-sm btn-primary"
+                              onclick="openAddConstraintModal(${serviceIndex})">
+                        <i class="bi bi-plus"></i> Add Constraint
+                      </button>
+                    </div>
+                  </div>
+                  <div class="card-body p-3">
+                    <div id="constraints-list-${serviceIndex}" class="list-group list-group-flush">
+                      ${renderConstraintsList(serviceIndex)}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <!-- Search Configurations -->
+            <div class="card border-light mb-3">
+              <div class="card-header bg-white">
+                <div class="d-flex justify-content-between align-items-center">
+                  <strong>Search Configurations</strong>
+                  <button type="button" class="btn btn-sm btn-primary"
+                          onclick="openAddSearchConfigModal(${serviceIndex})">
+                    <i class="bi bi-plus"></i> Add Search Config
+                  </button>
+                </div>
+              </div>
+              <div class="card-body p-3">
+                <div id="search-configs-${serviceIndex}">
+                  ${renderSearchConfigs(serviceIndex)}
+                </div>
+              </div>
+            </div>
+            
+            <input type="hidden" name="service_payloads[]" 
+                   value="${encodeURIComponent(JSON.stringify(service))}">
+          </div>
+        </div>
+      `;
+
+        servicesContainer.appendChild(card);
+
+        // Initialize Bootstrap collapse for this card
+        new bootstrap.Collapse(document.getElementById(collapseId), {
+          toggle: false
+        });
+
+        updateHiddenInput(serviceIndex);
+      }
+
+      function getUserLimitPerService() {
+        if (planSelect.value === 'Platinum') {
+          return currentPlanConfig.users === 'Unlimited' ? 'Unlimited' : (currentPlanConfig.users || 'Unlimited');
+        }
+        // For fixed plans, calculate per-service limit
+        const totalUsers = parseInt(currentPlanConfig.users) || 0;
+        const totalServices = parseInt(currentPlanConfig.services) || 1;
+        return Math.floor(totalUsers / totalServices);
+      }
+
+      function isAddUserDisabled(serviceIndex) {
+        const plan = planSelect.value;
+        if (plan === 'Platinum') {
+          if (currentPlanConfig.users === 'Unlimited' || currentPlanConfig.users === '') {
+            return false;
+          }
+          // For Platinum with finite users, check total across all services
+          let totalUsers = 0;
+          services.forEach(s => {
+            totalUsers += s.users.length;
+          });
+          const userLimit = parseInt(currentPlanConfig.users);
+          return !isNaN(userLimit) && totalUsers >= userLimit;
+        } else {
+          // For fixed plans, check per-service limit
+          const service = services[serviceIndex];
+          const totalUsers = parseInt(currentPlanConfig.users) || 0;
+          const totalServices = parseInt(currentPlanConfig.services) || 1;
+          const perServiceLimit = Math.floor(totalUsers / totalServices);
+          return service.users.length >= perServiceLimit;
+        }
+      }
+
+      function updateServiceDefinition(serviceIndex, value) {
+        services[serviceIndex].definition = value;
+        updateHiddenInput(serviceIndex);
+      }
+
+      function updateServiceCard(serviceIndex) {
+        const card = document.getElementById(`service-card-${serviceIndex}`);
+        if (!card) return;
+
+        // Update user count display
+        const userCountEl = card.querySelector(`#user-count-${serviceIndex}`);
+        if (userCountEl) {
+          userCountEl.textContent = services[serviceIndex].users.length;
+        }
+
+        // Update Add User button state
+        const addUserBtn = card.querySelector(`button[onclick="openAddUserModal(${serviceIndex})"]`);
+        if (addUserBtn) {
+          if (isAddUserDisabled(serviceIndex)) {
+            addUserBtn.disabled = true;
+          } else {
+            addUserBtn.disabled = false;
+          }
+        }
+
+        // Update users list
+        const usersListEl = document.getElementById(`users-list-${serviceIndex}`);
+        if (usersListEl) {
+          usersListEl.innerHTML = renderUsersList(serviceIndex);
+        }
+
+        // Update constraints list
+        const constraintsListEl = document.getElementById(`constraints-list-${serviceIndex}`);
+        if (constraintsListEl) {
+          constraintsListEl.innerHTML = renderConstraintsList(serviceIndex);
+        }
+
+        // Update search configs
+        const searchConfigsEl = document.getElementById(`search-configs-${serviceIndex}`);
+        if (searchConfigsEl) {
+          searchConfigsEl.innerHTML = renderSearchConfigs(serviceIndex);
+        }
+
+        // Update hidden input
+        updateHiddenInput(serviceIndex);
+      }
+
+      function updateHiddenInput(serviceIndex) {
+        const card = document.getElementById(`service-card-${serviceIndex}`);
+        if (!card) return;
+
+        const hiddenInput = card.querySelector('input[type="hidden"]');
+        if (hiddenInput) {
+          hiddenInput.value = encodeURIComponent(JSON.stringify(services[serviceIndex]));
+        }
+      }
+
+      function renderUsersList(serviceIndex) {
+        const service = services[serviceIndex];
+        if (service.users.length === 0) {
+          return '<div class="text-muted small text-center py-3">No users added</div>';
+        }
+
+        return service.users.map((user, index) => `
+        <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3 border-0">
+            <div>
+                <small><strong>${user.username}</strong></small><br>
+                <small class="text-muted">${user.email} (${user.role})</small>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger border-0" 
+                    onclick="removeUser(${serviceIndex}, ${index})">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+      `).join('');
+      }
+
+      function renderConstraintsList(serviceIndex) {
+        const service = services[serviceIndex];
+        if (service.constraints.length === 0) {
+          return '<div class="text-muted small text-center py-3">No constraints added</div>';
+        }
+
+        return service.constraints.map((constraint, index) => `
+        <div class="list-group-item d-flex justify-content-between align-items-center py-2 px-3 border-0">
+            <div>
+                <small><strong>${constraint.category}</strong></small><br>
+                <small class="text-muted">${constraint.description}</small>
+            </div>
+            <button type="button" class="btn btn-sm btn-outline-danger border-0"
+                    onclick="removeConstraint(${serviceIndex}, ${index})">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+      `).join('');
+      }
+
+      function renderSearchConfigs(serviceIndex) {
+        const service = services[serviceIndex];
+        if (service.searchConfigs.length === 0) {
+          return '<div class="text-muted small text-center py-3">No search configs added</div>';
+        }
+
+        return service.searchConfigs.map((config, configIndex) => {
+          // Truncate long keywords for display
+          const displayKeyword = config.keyword.length > 50 ?
+            config.keyword.substring(0, 50) + '...' :
+            config.keyword;
+
+          return `
+          <div class="card mb-2 border-light">
+            <div class="card-header bg-white py-2">
+              <div class="d-flex justify-content-between align-items-center">
+                <span class="fw-bold" title="${config.keyword}">${displayKeyword}</span>
+                <div>
+                  <small class="text-muted me-2">Max: ${config.max} | Time: ${config.time || 'Not set'} | Active: ${config.active == 1 ? 'Yes' : 'No'}</small>
+                  <button type="button" class="btn btn-sm btn-outline-danger border-0"
+                          onclick="removeSearchConfig(${serviceIndex}, ${configIndex})">
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+            <div class="card-body py-2">
+              <div class="mb-2">
+                <strong>Notification Recipients:</strong>
+                <button type="button" class="btn btn-sm btn-outline-primary ms-2"
+                        onclick="openAddRecipientModal(${serviceIndex}, ${configIndex})">
+                  <i class="bi bi-plus"></i> Add
+                </button>
+              </div>
+              <div id="recipients-${serviceIndex}-${configIndex}" class="d-flex flex-wrap gap-2">
+                ${renderRecipientsList(serviceIndex, configIndex)}
+              </div>
+            </div>
+          </div>
+        `;
+        }).join('');
+      }
+
+      function renderRecipientsList(serviceIndex, configIndex) {
+        const recipients = services[serviceIndex].searchConfigs[configIndex].recipients;
+        if (recipients.length === 0) {
+          return '<span class="text-muted small">No recipients added</span>';
+        }
+
+        return recipients.map((recipient, recipientIndex) => `
+        <div class="badge bg-light text-dark border d-flex align-items-center">
+          ${recipient.name} (${recipient.email})
+          <button type="button" class="btn btn-sm btn-link text-danger ms-1 p-0 border-0"
+                  onclick="removeRecipient(${serviceIndex}, ${configIndex}, ${recipientIndex})">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+      `).join('');
+      }
+
+      // Global functions for inline event handlers
+      window.updateServiceDefinition = function (serviceIndex, value) {
+        services[serviceIndex].definition = value;
+        updateHiddenInput(serviceIndex);
+      };
+
+      window.updateServiceName = function (serviceIndex, value) {
+        services[serviceIndex].name = value;
+        updateHiddenInput(serviceIndex);
+      };
+
+      window.removeService = function (serviceIndex) {
+        // For fixed plans, don't allow removal
+        const plan = planSelect.value;
+        if (plan !== 'Platinum') {
+          alert('Cannot remove services from fixed plans. Please select a different plan.');
+          return;
+        }
+
+        if (confirm('Are you sure you want to remove this service?')) {
+          services.splice(serviceIndex, 1);
+
+          // Re-render all services to update indices
+          servicesContainer.innerHTML = '';
+          services.forEach((_, index) => {
+            renderServiceCard(index);
+          });
+
+          if (services.length === 0) {
+            servicesContainer.innerHTML = '<div class="alert alert-info"><i class="bi bi-info-circle"></i> No services added yet. Click \'Add Service\' to begin.</div>';
+          }
+
+          updateServiceCount();
+        }
+      };
+
+      window.openAddUserModal = function (serviceIndex) {
+        document.getElementById('userServiceIndex').value = serviceIndex;
+        // Clear previous values
+        document.getElementById('user_username').value = '';
+        document.getElementById('user_email').value = '';
+        document.getElementById('user_password').value = '';
+        document.getElementById('user_role').value = 'user';
+
+        addUserModal.show();
+      };
+
+      window.openAddConstraintModal = function (serviceIndex) {
+        document.getElementById('constraintServiceIndex').value = serviceIndex;
+        // Clear previous values
+        document.getElementById('constraint_category').value = 'financial';
+        document.getElementById('constraint_desc').value = '';
+
+        addConstraintModal.show();
+      };
+
+      window.openAddSearchConfigModal = function (serviceIndex) {
+        document.getElementById('searchConfigServiceIndex').value = serviceIndex;
+        // Clear previous values
+        document.getElementById('sc_keyword').value = '';
+        document.getElementById('sc_max').value = '30';
+        document.getElementById('sc_time').value = '';
+        document.getElementById('sc_active').value = '1';
+
+        addSearchConfigModal.show();
+      };
+
+      window.openAddRecipientModal = function (serviceIndex, configIndex) {
+        document.getElementById('recipientServiceIndex').value = serviceIndex;
+        document.getElementById('recipientConfigIndex').value = configIndex;
+        // Clear previous values
+        document.getElementById('recipient_name').value = '';
+        document.getElementById('recipient_email').value = '';
+
+        addRecipientModal.show();
+      };
+
+      window.removeUser = function (serviceIndex, userIndex) {
+        if (confirm('Remove this user?')) {
+          services[serviceIndex].users.splice(userIndex, 1);
+          updateServiceCard(serviceIndex);
+        }
+      };
+
+      window.removeConstraint = function (serviceIndex, constraintIndex) {
+        if (confirm('Remove this constraint?')) {
+          services[serviceIndex].constraints.splice(constraintIndex, 1);
+          updateServiceCard(serviceIndex);
+        }
+      };
+
+      window.removeSearchConfig = function (serviceIndex, configIndex) {
+        if (confirm('Remove this search configuration?')) {
+          services[serviceIndex].searchConfigs.splice(configIndex, 1);
+          updateServiceCard(serviceIndex);
+        }
+      };
+
+      window.removeRecipient = function (serviceIndex, configIndex, recipientIndex) {
+        if (confirm('Remove this recipient?')) {
+          services[serviceIndex].searchConfigs[configIndex].recipients.splice(recipientIndex, 1);
+          updateServiceCard(serviceIndex);
+        }
+      };
+    });
+  </script>
+
+  <style>
+    .service-definition {
+      width: 100%;
+      resize: vertical;
+      min-height: 100px;
+    }
+
+    .industry-name {
+      font-weight: bold;
+      border: none;
+      background: transparent;
+      padding: 0;
+    }
+
+    .industry-name:focus {
+      background: white;
+      border: 1px solid #ced4da;
+      box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    .card-header {
+      background-color: #f8f9fa !important;
+    }
+
+    .btn-primary,
+    .btn-secondary,
+    .btn-success,
+    .btn-danger,
+    .btn-warning,
+    .btn-info,
+    .btn-dark {
+      color: white !important;
+    }
+
+    .btn-outline-primary,
+    .btn-outline-secondary,
+    .btn-outline-success,
+    .btn-outline-danger,
+    .btn-outline-warning,
+    .btn-outline-info,
+    .btn-outline-dark {
+      color: #6c757d !important;
+      border-color: #6c757d !important;
+    }
+
+    .btn-outline-primary:hover,
+    .btn-outline-secondary:hover,
+    .btn-outline-success:hover,
+    .btn-outline-danger:hover,
+    .btn-outline-warning:hover,
+    .btn-outline-info:hover,
+    .btn-outline-dark:hover {
+      color: white !important;
+    }
+
+    .badge {
+      font-size: 0.85em;
+      padding: 0.4em 0.7em;
+    }
+
+    .list-group-item {
+      border: none;
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    }
+
+    .list-group-item:last-child {
+      border-bottom: none;
+    }
+
+    .btn-link {
+      text-decoration: none;
+    }
+
+    .btn-link:hover {
+      text-decoration: none;
+    }
+
+    .btn-link[aria-expanded="true"] .bi-chevron-down {
+      transform: rotate(180deg);
+      transition: transform 0.2s;
+    }
+
+    .btn-link .bi-chevron-down {
+      transition: transform 0.2s;
+    }
+  </style>
+
+  {% elif mode == 'manage' %}
+  <!-- ========== MANAGE SINGLE ORGANIZATION ========== -->
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h4 class="mb-0">
+      Manage Organization — <span class="text-primary">{{ organization.name }}</span>
+    </h4>
+    <a href="{{ url_for('organization') }}" class="btn btn-outline-secondary btn-sm">← Back to Organizations</a>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <ul class="nav nav-tabs" id="orgTabs" role="tablist">
+        <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#users">Users</button>
+        </li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab"
+            data-bs-target="#constraints">Constraints</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#services">Service
+            Definitions</button></li>
+        <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#searchconfigs">Search
+            Configurations</button></li>
+      </ul>
+
+      <div class="tab-content mt-3">
+        <!-- Users TAB -->
+        <div class="tab-pane fade show active" id="users">
+          <div class="d-flex justify-content-between mb-2">
+            <h6>Users</h6>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addUserModal">Add
+              User</button>
+          </div>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Created</th>
+                <th>Role</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for user in users %}
+              <tr>
+                <td>{{ user.id }}</td>
+                <td>{{ user.username }}</td>
+                <td>{{ user.email or '-' }}</td>
+                <td>{{ user.created_at.strftime('%Y-%m-%d') if user.created_at else '-' }}</td>
+                <td>{{ user.role or '-' }}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary edit-user">Edit</button>
+                  <button class="btn btn-sm btn-outline-danger delete-user">Delete</button>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted">No users</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Constraints TAB -->
+        <div class="tab-pane fade" id="constraints">
+          <div class="d-flex justify-content-between mb-2">
+            <h6>Constraints</h6>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addConstraintModal">Add
+              Constraint</button>
+          </div>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Category</th>
+                <th>Description</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for c in constraints %}
+              <tr>
+                <td>{{ c.id }}</td>
+                <td>{{ c.category }}</td>
+                <td>{{ c.description }}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary edit-constraint" data-id="{{ c.id }}"
+                    data-category="{{ c.category }}" data-desc="{{ c.description }}">
+                    Edit
+                  </button>
+                  <button class="btn btn-sm btn-outline-danger delete-constraint" data-id="{{ c.id }}">Delete</button>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted">No constraints</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Services TAB -->
+        <div class="tab-pane fade" id="services">
+          <div class="d-flex justify-content-between mb-2">
+            <h6>Service / Product Definitions</h6>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addServiceModal">Add</button>
+          </div>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Definition</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for s in services %}
+              <tr>
+                <td>{{ s.id }}</td>
+                <td>{{ s.definition }}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary edit-service" data-id="{{ s.id }}"
+                    data-definition="{{ s.definition }}">Edit</button>
+                  <button class="btn btn-sm btn-outline-danger delete-service" data-id="{{ s.id }}">Delete</button>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted">No services</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Search Configs TAB -->
+        <div class="tab-pane fade" id="searchconfigs">
+          <div class="d-flex justify-content-between mb-2">
+            <h6>Search Configurations</h6>
+            <button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#addSearchConfigModal">Add
+              Configuration</button>
+          </div>
+          <table class="table table-striped">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Keyword</th>
+                <th>Max Tenders</th>
+                <th>Exec Time</th>
+                <th>Active</th>
+                <th>Recipients</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for cfg in search_configs %}
+              <tr>
+                <td>{{ cfg.id }}</td>
+                <td>{{ cfg.search_keyword or '-' }}</td>
+                <td>{{ cfg.max_tenders }}</td>
+                <td>{{ cfg.execution_time }}</td>
+                <td>{{ 'Yes' if cfg.is_active else 'No' }}</td>
+                <td>
+                  <button class="btn btn-sm btn-outline-secondary manage-recipients" data-id="{{ cfg.id }}">
+                    Manage ({{ cfg.notification_recipients|length }})
+                  </button>
+                </td>
+                <td>
+                  <button class="btn btn-sm btn-outline-primary edit-searchcfg" data-id="{{ cfg.id }}"
+                    data-keyword="{{ cfg.search_keyword }}" data-max="{{ cfg.max_tenders }}"
+                    data-time="{{ cfg.execution_time }}" data-active="{{ cfg.is_active }}">Edit</button>
+                  <button class="btn btn-sm btn-outline-danger delete-searchcfg" data-id="{{ cfg.id }}">Delete</button>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="7" class="text-center text-muted">No search configurations</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modals for MANAGE mode -->
+  <!-- Note: These modals have disabled forms since we're not adding new routes yet -->
+  <div class="modal fade" id="addUserModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add User</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="POST" action="#">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">Username</label>
+              <input name="username" class="form-control" required disabled>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Email</label>
+              <input name="email" type="email" class="form-control" required disabled>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Password</label>
+              <input name="password" type="password" class="form-control" required disabled>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Role</label>
+              <select name="role" class="form-control" disabled>
+                <option value="user">User</option>
+                <option value="admin">Admin</option>
+              </select>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary" type="submit" disabled>Add User</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="addConstraintModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Constraint</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="POST" action="#">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label>Category</label>
+              <select name="category" class="form-select" disabled>
+                <option value="technical">Technical</option>
+                <option value="financial">Financial</option>
+                <option value="legal">Legal</option>
+                <option value="other">Other</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label>Description</label>
+              <textarea name="description" class="form-control" rows="3" required disabled></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary" type="submit" disabled>Add Constraint</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="addServiceModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Service</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="POST" action="#">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label>Definition</label>
+              <textarea name="definition" class="form-control" rows="3" required disabled></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary" type="submit" disabled>Add Service</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal fade" id="addSearchConfigModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add Search Configuration</h5>
+          <button class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <form method="POST" action="#">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label>Search Keyword</label>
+              <input name="search_keyword" class="form-control" disabled>
+            </div>
+            <div class="mb-3">
+              <label>Max Tenders</label>
+              <input name="max_tenders" type="number" class="form-control" value="30" disabled>
+            </div>
+            <div class="mb-3">
+              <label>Execution Time (HH:MM)</label>
+              <input name="execution_time" class="form-control" placeholder="12:30" disabled>
+            </div>
+            <div class="mb-3 form-check">
+              <input name="is_active" type="checkbox" class="form-check-input" checked disabled>
+              <label class="form-check-label">Active</label>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button class="btn btn-primary" type="submit" disabled>Add Configuration</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Simple JavaScript for MANAGE mode -->
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      // Simple tab functionality
+      const tabButtons = document.querySelectorAll('[data-bs-toggle="tab"]');
+      tabButtons.forEach(button => {
+        button.addEventListener('click', function (e) {
+          const targetId = this.getAttribute('data-bs-target');
+          document.querySelectorAll('.tab-pane').forEach(pane => {
+            pane.classList.remove('show', 'active');
+          });
+          document.querySelectorAll('.nav-link').forEach(link => {
+            link.classList.remove('active');
+          });
+          this.classList.add('active');
+          document.querySelector(targetId).classList.add('show', 'active');
+        });
+      });
+
+      // Show disabled modal message
+      const modalTriggers = document.querySelectorAll('[data-bs-toggle="modal"]');
+      modalTriggers.forEach(trigger => {
+        trigger.addEventListener('click', function () {
+          // For now, just show the modals (they have disabled forms)
+          // In the future, you'll enable these when you add the routes
+        });
+      });
+    });
+  </script>
+
+  {% endif %}
+</div>
+
+<!-- Common JavaScript -->
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    // Simple back button functionality
+    const backButton = document.querySelector('a[href*="organization"]');
+    if (backButton) {
+      backButton.addEventListener('click', function (e) {
+        // If we're in add mode with unsaved services, confirm before leaving
+        const servicesList = document.getElementById('servicesList');
+        if (servicesList && servicesList.children.length > 1) {
+          if (!confirm('You have unsaved services. Are you sure you want to leave?')) {
+            e.preventDefault();
+          }
+        }
+      });
+    }
+  });
+</script>
+
+{% endblock %}
+
+
+
+
+<!-- updated admin org. management -->
+
+<!-- ========== ADD ORGANIZATION (SIMPLIFIED) ========== -->
+  <div class="container mt-4 mb-5">
+    <h3 class="mb-3">Add New Organization</h3>
+    <a href="{{ url_for('organization') }}" class="btn btn-sm btn-secondary mb-3">← Back</a>
+
+    <form method="POST" action="{{ url_for('add_organization') }}">
+      <!-- Organization -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header">
+          <h5 class="mb-0">Organization Details</h5>
+        </div>
+        <div class="card-body">
+          <div class="mb-3">
+            <label class="form-label">Organization Name</label>
+            <input type="text" name="org_name" class="form-control" required>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Description</label>
+            <textarea name="org_description" class="form-control" rows="3"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Users -->
+      <div class="card shadow-sm mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="mb-0">Users</h5>
+          <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#userModal">
+            Add User
+          </button>
+        </div>
+        <div class="card-body">
+          <div id="users-table">
+            <p class="text-muted">No users added yet</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-success">Save</button>
+        <a href="{{ url_for('organization') }}" class="btn btn-secondary">Cancel</a>
+      </div>
+    </form>
+  </div>
+
+  <!-- User Modal -->
+  <div class="modal fade" id="userModal" tabindex="-1">
+    <div class="modal-dialog">
+      <div class="modal-content">
+        <div class="modal-header">
+          <h5 class="modal-title">Add User</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3">
+            <label class="form-label">Username</label>
+            <input type="text" id="username" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Email</label>
+            <input type="email" id="email" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Password</label>
+            <input type="text" id="password" class="form-control">
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Role</label>
+            <select id="role" class="form-select">
+              <option value="user">User</option>
+              <option value="admin">Admin</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+          <button type="button" class="btn btn-primary" onclick="saveUser()">Add</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let users = [];
+
+    function saveUser() {
+      const username = document.getElementById('username').value.trim();
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value.trim();
+      const role = document.getElementById('role').value;
+
+      if (!username || !email || !password) {
+        alert('Please fill all fields');
+        return;
+      }
+
+      users.push({ username, email, password, role });
+      updateTable();
+
+      // Clear modal
+      document.getElementById('username').value = '';
+      document.getElementById('email').value = '';
+      document.getElementById('password').value = '';
+      document.getElementById('role').value = 'user';
+
+      // Close modal
+      bootstrap.Modal.getInstance(document.getElementById('userModal')).hide();
+    }
+
+    function updateTable() {
+      const container = document.getElementById('users-table');
+
+      if (users.length === 0) {
+        container.innerHTML = '<p class="text-muted">No users added yet</p>';
+        return;
+      }
+
+      let html = `
+        <table class="table table-sm">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Email</th>
+                    <th>Role</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+    `;
+
+      users.forEach((user, index) => {
+        html += `
+            <tr>
+                <td>${user.username}</td>
+                <td>${user.email}</td>
+                <td><span class="badge ${user.role === 'admin' ? 'bg-primary' : 'bg-secondary'}">${user.role}</span></td>
+                <td>
+                    <button type="button" class="btn btn-sm btn-outline-danger" onclick="removeUser(${index})">
+                        Remove
+                    </button>
+                </td>
+            </tr>
+        `;
+      });
+
+      html += '</tbody></table>';
+      container.innerHTML = html;
+
+      // Update hidden inputs
+      updateHiddenInputs();
+    }
+
+    function updateHiddenInputs() {
+      // Remove old hidden inputs
+      const oldInputs = document.querySelectorAll('input[name^="users["]');
+      oldInputs.forEach(input => input.remove());
+
+      // Add new hidden inputs
+      users.forEach((user, index) => {
+        const form = document.querySelector('form');
+
+        ['username', 'email', 'password', 'role'].forEach(field => {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = `users[${index}][${field}]`;
+          input.value = user[field];
+          form.appendChild(input);
+        });
+      });
+    }
+
+    function removeUser(index) {
+      if (confirm('Remove this user?')) {
+        users.splice(index, 1);
+        updateTable();
+      }
+    }
+  </script>

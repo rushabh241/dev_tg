@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+
+{% block title %}NEWS{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  <!-- TOP HEADER (premium, catchy) -->
+  <div class="news-top mb-4">
+    <div class="news-top-inner">
+      <div class="d-flex align-items-start justify-content-between flex-wrap gap-3">
+        <div class="min-w-0">
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
+            <span class="k-chip">
+              <i class="bi bi-stars me-1"></i> Procurement Intelligence
+            </span>
+            <span class="k-chip k-chip-warn">
+              <i class="bi bi-lightning-charge-fill me-1"></i> Gemini-curated
+            </span>
+            <span class="k-chip k-chip-soft">
+              <i class="bi bi-clock-history me-1"></i> Updated feed
+            </span>
+          </div>
+
+          <h1 class="news-heading mb-1">NEWS</h1>
+          <div class="news-underline"></div>
+          <div class="text-muted mt-2 news-sub">
+            Curated procurement-relevant industry updates tailored for faster decisions.
+          </div>
+        </div>
+
+        <div class="news-top-stat">
+          <div class="stat-pill">
+            <div class="stat-pill-title">Today’s highlights</div>
+            <div class="stat-pill-value">
+              {{ hero_news|length if hero_news else 0 }} top stories • {{ other_news|length if other_news else 0 }} more
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- HERO / Carousel (Top 5 most recent) -->
+  {% if hero_news and hero_news|length > 0 %}
+  <div class="card shadow-sm mb-4 hero-wrap">
+    <div class="card-body p-0 hero-card">
+      <div id="newsHeroCarousel" class="carousel slide" data-bs-ride="carousel">
+
+        <!-- DOT INDICATORS -->
+        <div class="carousel-indicators hero-dots">
+          {% for _ in hero_news %}
+            <button type="button"
+                    data-bs-target="#newsHeroCarousel"
+                    data-bs-slide-to="{{ loop.index0 }}"
+                    class="{% if loop.index0 == 0 %}active{% endif %}"
+                    aria-label="Slide {{ loop.index }}">
+            </button>
+          {% endfor %}
+        </div>
+
+        <div class="carousel-inner">
+          {% for item in hero_news %}
+          <div class="carousel-item {% if loop.index0 == 0 %}active{% endif %}">
+            <div class="hero-slide p-3 p-md-4 p-lg-5">
+
+              <div class="row g-3 align-items-center">
+                <!-- HERO THUMBNAIL (small, neat) -->
+                <div class="col-12 col-lg-5">
+                  {% set hero_img = item.thumbnail_url or url_for('static', filename='img/news_placeholder.png') %}
+                  {% if item.news_url %}
+                    <a href="{{ item.news_url }}" target="_blank" rel="noopener" class="thumb-link thumb-hero">
+                      <img src="{{ hero_img }}" class="thumb-img thumb-hero-img" alt="News thumbnail">
+                      <div class="thumb-shade"></div>
+                      <span class="thumb-badge"><i class="bi bi-fire me-1"></i> Top story</span>
+                    </a>
+                  {% else %}
+                    <div class="thumb-link thumb-hero">
+                      <img src="{{ hero_img }}" class="thumb-img thumb-hero-img" alt="News thumbnail">
+                      <div class="thumb-shade"></div>
+                      <span class="thumb-badge"><i class="bi bi-fire me-1"></i> Top story</span>
+                    </div>
+                  {% endif %}
+                </div>
+
+                <!-- HERO CONTENT -->
+                <div class="col-12 col-lg-7">
+                  <div class="d-flex justify-content-between flex-wrap gap-2 mb-2">
+                    
+                    
+                  </div>
+
+                  <h3 class="hero-title mb-2">
+                    {{ item.news_title }}
+                  </h3>
+
+                  <div class="d-flex flex-wrap gap-2 mb-3">
+                    {% if item.industry_id is not none %}
+                      
+                    {% endif %}
+                    {% if item.service_product_definition_id is not none %}
+                      
+                    {% endif %}
+                  </div>
+
+                  <div class="d-flex align-items-center gap-2 flex-wrap">
+                    {% if item.news_url %}
+                      <a class="btn btn-outline-light btn-sm hero-btn" href="{{ item.news_url }}" target="_blank" rel="noopener">
+                        <i class="bi bi-box-arrow-up-right me-1"></i> Read source
+                      </a>
+                    {% endif %}
+                    <span class="text-muted small">
+                      <i class="bi bi-info-circle me-1"></i> Use dots below to switch stories.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+
+      </div>
+    </div>
+  </div>
+  {% else %}
+  <div class="alert alert-info mb-4">No news yet. Come back later.</div>
+  {% endif %}
+
+  <!-- Remaining News -->
+  <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
+    <h4 class="mb-0 section-h">Recent Updates In the Industry</h4>
+    <div class="text-muted small">Sorted by relevance score • excluding top carousel items</div>
+  </div>
+
+  {% if other_news and other_news|length > 0 %}
+  <div id="newsCardsGrid" class="row g-3">
+    {% for n in other_news %}
+    <div class="col-12 col-md-6 col-lg-4">
+      <div class="card h-100 shadow-sm news-card overflow-hidden">
+
+        <!-- CARD THUMBNAIL (smaller) -->
+        {% set card_img = n.thumbnail_url or url_for('static', filename='img/news_placeholder.png') %}
+        {% if n.news_url %}
+          <a href="{{ n.news_url }}" target="_blank" rel="noopener" class="thumb-link thumb-card">
+            <img src="{{ card_img }}" class="thumb-img thumb-card-img" alt="News thumbnail">
+            <div class="thumb-shade"></div>
+            
+          </a>
+        {% else %}
+          <div class="thumb-link thumb-card">
+            <img src="{{ card_img }}" class="thumb-img thumb-card-img" alt="News thumbnail">
+            <div class="thumb-shade"></div>
+            
+          </div>
+        {% endif %}
+
+        <div class="card-body d-flex flex-column">
+          <div class="d-flex justify-content-between align-items-start gap-2 mb-2">
+            
+            
+          </div>
+
+          <h6 class="card-title-tight mb-2">{{ n.news_title }}</h6>
+
+          <div class="d-flex flex-wrap gap-2 mb-3">
+            {% if n.industry_id is not none %}
+              
+            {% endif %}
+            {% if n.service_product_definition_id is not none %}
+              
+            {% endif %}
+          </div>
+
+          <div class="mt-auto d-flex justify-content-between align-items-center">
+            {% if n.news_url %}
+              <a href="{{ n.news_url }}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm">
+                Open
+              </a>
+            {% else %}
+              <span class="text-muted small">No URL</span>
+            {% endif %}
+            
+          </div>
+
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+   <!-- LOAD MORE -->
+  <div class="d-flex justify-content-center mt-4">
+    {% if has_more %}
+      <button id="loadMoreBtn"
+              class="btn btn-outline-dark px-4"
+              type="button">
+        <span id="loadMoreText">Load more</span>
+        <span id="loadMoreSpinner" class="spinner-border spinner-border-sm ms-2 d-none" role="status" aria-hidden="true"></span>
+      </button>
+    {% else %}
+      <div class="text-muted small">You’re all caught up (last 30 days).</div>
+    {% endif %}
+  </div>
+
+  <div id="loadMoreMeta" class="text-center text-muted small mt-2">
+    {% if has_more %}
+      Showing {{ other_news|length }} of {{ total_count }} (last 30 days). {{ remaining_count }} remaining.
+    {% else %}
+      Showing {{ other_news|length if other_news else 0 }} of {{ total_count }} (last 30 days).
+    {% endif %}
+  </div>
+  {% else %}
+  <div class="alert alert-secondary mt-3">No additional news items to show.</div>
+  {% endif %}
+
+</div>
+
+<style>
+  /* =========================
+     TOP HEADER: premium TG look
+     ========================= */
+  .news-top{
+    position: relative;
+    border-radius: 18px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 14px 34px rgba(20,18,45,0.10);
+    background:
+      radial-gradient(1200px 420px at 15% -15%, rgba(75,59,140,0.22), transparent 60%),
+      radial-gradient(900px 340px at 88% 0%, rgba(104,86,185,0.18), transparent 55%),
+      linear-gradient(135deg, rgba(255,255,255,0.97), rgba(255,255,255,0.90));
+  }
+  .news-top:before{
+    content:"";
+    position:absolute; inset:0;
+    background: linear-gradient(180deg, rgba(75,59,140,0.08) 0%, rgba(75,59,140,0.00) 55%, rgba(75,59,140,0.06) 100%);
+    pointer-events:none;
+  }
+  .news-top-inner{ position: relative; padding: 18px; }
+
+  .k-chip{
+    display:inline-flex; align-items:center;
+    font-weight: 800; font-size: 12px;
+    padding: 6px 10px;
+    border-radius: 999px;
+    color: #241a52;
+    background: rgba(75,59,140,0.10);
+    border: 1px solid rgba(75,59,140,0.16);
+    backdrop-filter: blur(6px);
+  }
+  .k-chip-warn{
+    background: rgba(255,193,7,0.12);
+    border-color: rgba(255,193,7,0.22);
+  }
+  .k-chip-soft{
+    background: rgba(36,26,82,0.06);
+    border-color: rgba(36,26,82,0.10);
+  }
+
+  .news-heading{
+    font-weight: 950;
+    letter-spacing: -0.8px;
+    font-size: clamp(2.2rem, 3.6vw, 3.1rem);
+    line-height: 1.06;
+    margin-top: 6px;
+    background: linear-gradient(90deg, #241a52, #4b3b8c, #241a52);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: 0 16px 34px rgba(75,59,140,0.18);
+  }
+  .news-underline{
+    width: 84px; height: 6px;
+    border-radius: 999px;
+    margin-top: 8px;
+    background: linear-gradient(90deg, rgba(75,59,140,0.95), rgba(75,59,140,0.14));
+  }
+  .news-sub{ max-width: 66ch; }
+
+  .stat-pill{
+    border-radius: 14px;
+    padding: 10px 12px;
+    background: rgba(255,255,255,0.78);
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 10px 22px rgba(20,18,45,0.08);
+    min-width: 220px;
+  }
+  .stat-pill-title{
+    font-size: 12px; font-weight: 900;
+    color: rgba(36,26,82,0.65);
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+  }
+  .stat-pill-value{
+    font-size: 14px; font-weight: 900;
+    color: #241a52;
+  }
+
+  /* =========================
+     HERO card look
+     ========================= */
+  .hero-card{
+    border-radius: 16px;
+    overflow: hidden;
+    background:
+      radial-gradient(900px 280px at 10% 0%, rgba(75,59,140,0.10), transparent 60%),
+      radial-gradient(720px 240px at 92% 10%, rgba(104,86,185,0.10), transparent 55%),
+      linear-gradient(135deg, rgba(75,59,140,0.08), rgba(255,255,255,0.0));
+  }
+
+  /* Dots */
+  .hero-dots{
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+    bottom: 12px;
+    margin: 0;
+    z-index: 5;
+    gap: 6px;
+  }
+  .hero-dots [data-bs-target]{
+    width: 8px; height: 8px;
+    border-radius: 999px;
+    border: 0;
+    opacity: 0.45;
+    background-color: rgba(36,26,82,0.55);
+  }
+  .hero-dots .active{
+    opacity: 1;
+    width: 22px;
+    background-color: rgba(75,59,140,0.92);
+  }
+
+  /* ensure dots never overlap content */
+  .hero-slide{ padding-bottom: 46px; }
+
+  /* =========================
+     THUMBNAILS: SMALL + NEAT + NO OVERLAP
+     ========================= */
+  .thumb-link{
+    position: relative;
+    display: block;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1px solid rgba(0,0,0,0.06);
+    background: #fff;
+    box-shadow: 0 12px 26px rgba(20,18,45,0.12);
+    text-decoration: none;
+  }
+  .thumb-img{
+    width: 100%;
+    display: block;
+    object-fit: cover;
+    transition: transform 0.25s ease;
+  }
+  .thumb-link:hover .thumb-img{ transform: scale(1.04); }
+
+  /* HERO thumbnail smaller */
+  .thumb-hero{ max-width: 360px; margin: 0 auto; }
+  .thumb-hero-img{
+    aspect-ratio: 16 / 12;
+    max-height: 200px; /* hard cap */
+  }
+
+  /* CARD thumbnail smaller */
+  .thumb-card-img{
+    aspect-ratio: 16 / 12;
+    max-height: 150px;
+  }
+
+  .thumb-shade{
+    position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(0,0,0,0.02) 0%, rgba(0,0,0,0.10) 65%, rgba(0,0,0,0.34) 100%);
+    pointer-events: none;
+  }
+  .thumb-badge{
+    position: absolute;
+    left: 10px;
+    bottom: 10px;
+    display: inline-flex;
+    align-items: center;
+    font-size: 12px;
+    font-weight: 900;
+    padding: 5px 10px;
+    border-radius: 999px;
+    color: #fff;
+    background: rgba(75,59,140,0.92);
+    border: 1px solid rgba(255,255,255,0.18);
+    backdrop-filter: blur(6px);
+  }
+  .thumb-badge-sm{
+    padding: 4px 10px;
+    font-weight: 900;
+  }
+
+  /* =========================
+     Typography: clamp so titles never overflow
+     ========================= */
+  .hero-title{
+    font-weight: 950;
+    letter-spacing: -0.3px;
+    line-height: 1.15;
+    color: #241a52;
+    font-size: clamp(1.25rem, 2.0vw, 1.75rem);
+    text-shadow: 0 12px 26px rgba(75,59,140,0.10);
+
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .card-title-tight{
+    font-weight: 900;
+    color: #241a52;
+    line-height: 1.2;
+
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    min-height: calc(1.2em * 3); /* keeps cards aligned */
+  }
+
+  .section-h{
+    font-weight: 950;
+    letter-spacing: -0.2px;
+    color: #241a52;
+  }
+
+  .hero-btn{
+    border-radius: 12px;
+    font-weight: 900;
+    border-color: rgba(255,255,255,0.45);
+  }
+
+  @media (max-width: 992px){
+    .thumb-hero{ max-width: 420px; }
+    .thumb-hero-img{ max-height: 220px; }
+  }
+</style>
+<div id="newsMeta"
+     data-has-more="{{ 1 if has_more else 0 }}"
+     data-url-prefix="{{ url_prefix or '' }}"
+     data-next-page="{{ next_page or '' }}"
+     data-per-page="{{ per_page or 9 }}">
+</div>
+<script>
+(function () {
+  const meta = document.getElementById("newsMeta");
+  if (!meta) return;
+
+  const hasMore = meta.dataset.hasMore === "1";
+  if (!hasMore) return;
+
+  const urlPrefix = meta.dataset.urlPrefix || "";
+  let nextPage = meta.dataset.nextPage ? parseInt(meta.dataset.nextPage, 10) : null;
+  const perPage = meta.dataset.perPage ? parseInt(meta.dataset.perPage, 10) : 9;
+
+  const grid = document.getElementById("newsCardsGrid");
+  const btn = document.getElementById("loadMoreBtn");
+  const txt = document.getElementById("loadMoreText");
+  const spn = document.getElementById("loadMoreSpinner");
+  const status = document.getElementById("loadMoreMeta");
+
+  function setLoading(isLoading) {
+    btn.disabled = isLoading;
+    spn.classList.toggle("d-none", !isLoading);
+    txt.textContent = isLoading ? "Loading..." : "Load more";
+  }
+
+  async function loadMore() {
+    if (!nextPage) return;
+
+    setLoading(true);
+    try {
+      const endpoint = `${urlPrefix}/news/more?page=${nextPage}&per_page=${perPage}`;
+      const res = await fetch(endpoint, { headers: { "Accept": "application/json" } });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+      const data = await res.json();
+      if (!data.ok) throw new Error("ok=false");
+
+      if (data.html && data.html.trim()) {
+        grid.insertAdjacentHTML("beforeend", data.html);
+      }
+
+      nextPage = data.next_page;
+
+      const currentShown = grid.querySelectorAll(".col-12.col-md-6.col-lg-4").length;
+      status.textContent = `Showing ${currentShown} items (last 30 days).`;
+
+      if (!data.has_next || !nextPage) {
+        btn.classList.add("d-none");
+        status.textContent = `You’re all caught up (last 30 days). Showing ${currentShown} items.`;
+      }
+    } catch (e) {
+      console.error(e);
+      status.textContent = "Could not load more news. Please refresh and try again.";
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  btn.addEventListener("click", loadMore);
+})();
+</script>
+
+{% endblock %}

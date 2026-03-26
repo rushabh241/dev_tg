@@ -1,0 +1,639 @@
+{% extends "base.html" %}
+{% block content %}
+
+<div class="container mt-1">
+
+  {% if drilldown == "bid" %}
+  <!-- =========================================================
+       Drilldown: All offers for a Bid #
+       ========================================================= -->
+  <div class="row mb-2">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+      <div>
+        <h3 class="mb-0">Bid Drilldown</h3>
+        <div class="text-muted small">Bid #: <span class="fw-semibold">{{ bid_number }}</span></div>
+      </div>
+      <div>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('pricing_intelligence_page') }}">← Back to Pricing Intelligence</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <table id="offersTable" class="table table-striped table-sm w-100">
+        <thead>
+          <tr>
+            <th>Bid #</th>
+            <th>Seller</th>
+            <th class="text-end">Total Price</th>
+            <th>Rank</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    function inr(x) {
+      if (x === null || x === undefined || x === "") return "—";
+      const n = Number(x);
+      if (Number.isNaN(n)) return String(x);
+      return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n);
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const urlPrefix = "{{ url_prefix }}";
+      const bidNumber = "{{ bid_number }}";
+      const url = `${urlPrefix}/api/pricing-intelligence/bid/${encodeURIComponent(bidNumber)}/offers`;
+
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        const tbody = document.querySelector("#offersTable tbody");
+        tbody.innerHTML = "";
+        
+        (data.offers || []).forEach(r => {
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td>${r.bid_number ?? ""}</td>
+            <td>${r.seller_name ?? ""}</td>
+            <td class="text-end">${inr(r.total_price)}</td>
+            <td>${r.rank ?? ""}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (error) {
+        console.error("Error fetching bid offers:", error);
+        alert("Failed to load bid offers");
+      }
+    });
+  </script>
+
+  {% elif drilldown == "seller_wins" %}
+  <!-- =========================================================
+       Drilldown: All bids where Seller is L1
+       ========================================================= -->
+  <div class="row mb-2">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+      <div>
+        <h3 class="mb-0">Wins Drilldown</h3>
+        <div class="text-muted small">Seller: <span class="fw-semibold">{{ seller_name }}</span></div>
+      </div>
+      <div>
+        <a class="btn btn-outline-secondary btn-sm" href="{{ url_for('pricing_intelligence_page') }}">← Back to Pricing Intelligence</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <table id="winsTable" class="table table-striped table-sm w-100">
+        <thead>
+          <tr>
+            <th>Bid #</th>
+            <th>Buying Organisation</th>
+            <th>Location</th>
+            <th>Bid Date</th>
+            <th>Offered Items</th>
+            <th class="text-end">Winning Price</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+      <div class="text-muted small mt-2">
+        Tip: Click Bid # to see all offers for that bid.
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function inr(x) {
+      if (x === null || x === undefined || x === "") return "—";
+      const n = Number(x);
+      if (Number.isNaN(n)) return String(x);
+      return new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 2 }).format(n);
+    }
+
+    document.addEventListener("DOMContentLoaded", async () => {
+      const urlPrefix = "{{ url_prefix }}";
+      const sellerName = "{{ seller_name }}";
+      const url = `${urlPrefix}/api/pricing-intelligence/seller/${encodeURIComponent(sellerName)}/wins`;
+
+      try {
+        const resp = await fetch(url);
+        const data = await resp.json();
+
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        const tbody = document.querySelector("#winsTable tbody");
+        tbody.innerHTML = "";
+        
+        (data.wins || []).forEach(r => {
+          const bidLink = `${urlPrefix}/pricing-intelligence/bid/${encodeURIComponent(r.bid_number || "")}`;
+          const tr = document.createElement("tr");
+          tr.innerHTML = `
+            <td><a href="${bidLink}">${r.bid_number ?? ""}</a></td>
+            <td>${r.organisation ?? ""}</td>
+            <td>${r.buyer_location ?? ""}</td>
+            <td>${r.bid_open_datetime ? new Date(r.bid_open_datetime).toLocaleDateString('en-IN') : ""}</td>
+            <td class="small">${r.offered_items ?? ""}</td>
+            <td class="text-end">${inr(r.winning_price)}</td>
+          `;
+          tbody.appendChild(tr);
+        });
+      } catch (error) {
+        console.error("Error fetching seller wins:", error);
+        alert("Failed to load seller wins");
+      }
+    });
+  </script>
+
+  {% else %}
+  <!-- =========================================================
+       Main Dashboard
+       ========================================================= -->
+  <div class="row mb-1">
+    <div class="col-12 d-flex justify-content-between align-items-center">
+      <div>
+        <h3 class="mb-0">Tender Pricing Intelligence</h3>
+        <div class="text-muted small">Filters + pricing analytics • Drilldowns for bid offers and seller wins</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filters -->
+  <div class="row mb-2">
+    <div class="col-md-12">
+      <div class="card shadow-sm mb-3">
+        <div class="card-body">
+          <div class="row g-2">
+            <div class="col-md-2">
+              <label class="form-label mb-1">Tender ID / Bid #</label>
+              <input type="text" id="tender_id" class="form-control form-control-sm" placeholder="e.g. NTPC/2024/001" value="">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label mb-1">Buying organisation</label>
+              <input type="text" id="buyer_contains" class="form-control form-control-sm" placeholder="e.g. ntpc, railways" value="">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label mb-1">Item / scope</label>
+              <input type="text" id="item_contains" class="form-control form-control-sm" placeholder="e.g. gate valve" value="">
+            </div>
+
+            <div class="col-md-2">
+              <label class="form-label mb-1">Seller</label>
+              <input type="text" id="seller_contains" class="form-control form-control-sm" placeholder="e.g. abc valves" value="">
+            </div>
+
+            <div class="col-md-1">
+              <label class="form-label mb-1">From date</label>
+              <input type="date" id="date_from" class="form-control form-control-sm">
+            </div>
+
+            <div class="col-md-1">
+              <label class="form-label mb-1">To date</label>
+              <input type="date" id="date_to" class="form-control form-control-sm">
+            </div>
+
+            <div class="col-md-2 d-flex align-items-end">
+              <button id="runBtn" class="btn btn-primary btn-sm w-100">Apply Filters</button>
+            </div>
+          </div>
+
+          <div class="row mt-3">
+            <div class="col-md-12">
+              <div class="d-flex flex-wrap gap-3">
+                <div><span class="text-muted small">Tenders found:</span> <span id="k_bids" class="fw-semibold">—</span></div>
+                <div><span class="text-muted small">Total offers:</span> <span id="k_offers" class="fw-semibold">—</span></div>
+                <div><span class="text-muted small">Unique sellers:</span> <span id="k_sellers" class="fw-semibold">—</span></div>
+              </div>
+            </div>
+          </div>
+
+          <div class="row mt-2">
+            <div class="col-md-12">
+              <button id="clearFiltersBtn" class="btn btn-outline-secondary btn-sm">Clear All Filters</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <ul class="nav nav-tabs" id="mainTabs" role="tablist">
+    <li class="nav-item" role="presentation">
+      <button class="nav-link active" id="pricing-tab" data-bs-toggle="tab" data-bs-target="#tabPricing" type="button" role="tab" aria-controls="tabPricing" aria-selected="true">
+        Pricing Landscape
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="bidders-tab" data-bs-toggle="tab" data-bs-target="#tabBidders" type="button" role="tab" aria-controls="tabBidders" aria-selected="false">
+        Competitive Positioning
+      </button>
+    </li>
+    <li class="nav-item" role="presentation">
+      <button class="nav-link" id="chat-tab" data-bs-toggle="tab" data-bs-target="#tabChat" type="button" role="tab" aria-controls="tabChat" aria-selected="false">
+        Ask Database (Chat)
+      </button>
+    </li>
+  </ul>
+
+  <div class="tab-content pt-3">
+    <!-- Pricing Landscape -->
+    <div class="tab-pane fade show active" id="tabPricing" role="tabpanel" aria-labelledby="pricing-tab">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table id="bidsTable" class="table table-striped table-sm w-100">
+              <thead>
+                <tr>
+                  <th>Bid #</th>
+                  <th>Buying Organisation</th>
+                  <th>Location</th>
+                  <th>Bid Date</th>
+                  <th class="text-end"># Offers</th>
+                  <th>Offered Items</th>
+                  <th class="text-end">Min Offer (₹)</th>
+                  <th class="text-end">Avg Offer (₹)</th>
+                  <th class="text-end">Max Offer (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="9" class="text-center text-muted">Loading data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="text-muted small mt-2">
+            <i class="bi bi-info-circle"></i> Click on any Bid # to see all offers for that tender.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Competitive Positioning -->
+    <div class="tab-pane fade" id="tabBidders" role="tabpanel" aria-labelledby="bidders-tab">
+      <div class="card shadow-sm">
+        <div class="card-body">
+          <div class="table-responsive">
+            <table id="biddersTable" class="table table-striped table-sm w-100">
+              <thead>
+                <tr>
+                  <th>Seller</th>
+                  <th class="text-end">Total Offers</th>
+                  <th class="text-end">Wins (L1)</th>
+                  <th class="text-end">L2 Count</th>
+                  <th class="text-end">Total Won Amount (₹)</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td colspan="5" class="text-center text-muted">Loading data...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="text-muted small mt-2">
+            <i class="bi bi-info-circle"></i> Click on the Wins count to see all winning bids for that seller.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ask Database (Chat) -->
+    <div class="tab-pane fade" id="tabChat" role="tabpanel" aria-labelledby="chat-tab">
+      <div class="card shadow-sm">
+        <div class="card-body">
+
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Ask a question about the data</label>
+            <div class="input-group">
+              <input type="text" id="chatQuestion" class="form-control" placeholder="e.g. What is the average winning price for gate valve tenders in the last 90 days?" />
+              <button id="chatAskBtn" class="btn btn-primary">Ask</button>
+            </div>
+            <div class="text-muted small mt-1">
+              Your question will be converted to SQL and executed on the database.
+            </div>
+          </div>
+
+          <div id="chatMeta" class="small text-muted mb-2"></div>
+
+          <div class="mb-2">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="fw-semibold">Results</div>
+              <button id="toggleSqlBtn" class="btn btn-outline-secondary btn-sm" type="button">Show SQL</button>
+            </div>
+            <pre id="chatSql" class="bg-light p-2 rounded small mt-2" style="display:none; white-space:pre-wrap; max-height:200px; overflow:auto;"></pre>
+            <div id="chatExplanation" class="text-muted small mt-2"></div>
+          </div>
+
+          <div class="table-responsive">
+            <table id="chatResultTable" class="table table-striped table-sm w-100">
+              <thead>
+                <tr>
+                  <th>No data</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td class="text-muted">Ask a question to see results</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <script>
+    // Format as Indian Rupees
+    function inr(x) {
+      if (x === null || x === undefined || x === "") return "—";
+      const n = Number(x);
+      if (Number.isNaN(n)) return String(x);
+      return new Intl.NumberFormat('en-IN', { 
+        style: 'currency', 
+        currency: 'INR', 
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0 
+      }).format(n);
+    }
+
+    // Format date for display
+    function formatDate(dateStr) {
+      if (!dateStr) return "";
+      try {
+        const date = new Date(dateStr);
+        return date.toLocaleDateString('en-IN', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      } catch (e) {
+        return dateStr;
+      }
+    }
+
+    const urlPrefix = "{{ url_prefix }}";
+    
+    // Main search function
+    async function runSearch() {
+      // Show loading state
+      document.querySelector("#bidsTable tbody").innerHTML = '<tr><td colspan="9" class="text-center text-muted">Loading data...</td></tr>';
+      document.querySelector("#biddersTable tbody").innerHTML = '<tr><td colspan="5" class="text-center text-muted">Loading data...</td></tr>';
+      
+      // Get filter values
+      const tenderId = document.getElementById("tender_id").value.trim();
+      const buyerContains = document.getElementById("buyer_contains").value.trim();
+      const itemContains = document.getElementById("item_contains").value.trim();
+      const sellerContains = document.getElementById("seller_contains").value.trim();
+      const dateFrom = document.getElementById("date_from").value;
+      const dateTo = document.getElementById("date_to").value;
+
+      // Build payload (only include non-empty values)
+      const payload = {};
+      
+      if (tenderId) payload.tender_id = tenderId;
+      if (buyerContains) payload.buyer_contains = buyerContains;
+      if (itemContains) payload.item_contains = itemContains;
+      if (sellerContains) payload.seller_contains = sellerContains;
+      if (dateFrom) payload.date_from = dateFrom;
+      if (dateTo) payload.date_to = dateTo;
+
+      console.log("Search payload:", payload); // For debugging
+
+      try {
+        const resp = await fetch(`${urlPrefix}/api/pricing-intelligence/search`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify(payload)
+        });
+
+        if (!resp.ok) {
+          throw new Error(`HTTP error! status: ${resp.status}`);
+        }
+
+        const data = await resp.json();
+        
+        if (data.error) {
+          alert(data.error);
+          return;
+        }
+
+        // Update KPIs
+        const k = data.kpis || {};
+        document.getElementById("k_bids").innerText = k.bids_with_offers ?? "0";
+        document.getElementById("k_offers").innerText = k.total_offers ?? "0";
+        document.getElementById("k_sellers").innerText = k.unique_sellers ?? "0";
+
+        // Update Pricing Landscape table
+        const bidsBody = document.querySelector("#bidsTable tbody");
+        bidsBody.innerHTML = "";
+        
+        if (!data.bids || data.bids.length === 0) {
+          bidsBody.innerHTML = '<tr><td colspan="9" class="text-center text-muted">No tenders found matching your filters</td></tr>';
+        } else {
+          data.bids.forEach(r => {
+            const bidLink = `${urlPrefix}/pricing-intelligence/bid/${encodeURIComponent(r.bid_number || "")}`;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td><a href="${bidLink}" class="text-decoration-none">${r.bid_number ?? "—"}</a></td>
+              <td>${r.organisation ?? "—"}</td>
+              <td>${r.buyer_location ?? "—"}</td>
+              <td>${formatDate(r.bid_open_datetime)}</td>
+              <td class="text-end fw-semibold">${r.offer_count ?? 0}</td>
+              <td class="small" style="max-width: 200px; overflow: hidden; text-overflow: ellipsis;">${r.offered_items ?? "—"}</td>
+              <td class="text-end">${inr(r.min_offer)}</td>
+              <td class="text-end">${inr(r.avg_offer)}</td>
+              <td class="text-end">${inr(r.max_offer)}</td>
+            `;
+            bidsBody.appendChild(tr);
+          });
+        }
+
+        // Update Competitive Positioning table
+        const bidderBody = document.querySelector("#biddersTable tbody");
+        bidderBody.innerHTML = "";
+        
+        if (!data.bidders || data.bidders.length === 0) {
+          bidderBody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">No seller data found matching your filters</td></tr>';
+        } else {
+          data.bidders.forEach(r => {
+            const winsLink = `${urlPrefix}/pricing-intelligence/seller/${encodeURIComponent(r.seller_name || "")}/wins`;
+            const tr = document.createElement("tr");
+            tr.innerHTML = `
+              <td class="fw-semibold">${r.seller_name ?? "—"}</td>
+              <td class="text-end">${r.total_offers ?? 0}</td>
+              <td class="text-end"><a href="${winsLink}" class="text-decoration-none">${r.wins_l1 ?? 0}</a></td>
+              <td class="text-end">${r.l2_count ?? 0}</td>
+              <td class="text-end">${inr(r.total_won_amount)}</td>
+            `;
+            bidderBody.appendChild(tr);
+          });
+        }
+      } catch (error) {
+        console.error("Search error:", error);
+        alert("Failed to fetch data: " + error.message);
+        
+        // Show error in tables
+        document.querySelector("#bidsTable tbody").innerHTML = '<tr><td colspan="9" class="text-center text-danger">Error loading data</td></tr>';
+        document.querySelector("#biddersTable tbody").innerHTML = '<tr><td colspan="5" class="text-center text-danger">Error loading data</td></tr>';
+      }
+    }
+
+    // Clear all filters
+    function clearFilters() {
+      document.getElementById("tender_id").value = "";
+      document.getElementById("buyer_contains").value = "";
+      document.getElementById("item_contains").value = "";
+      document.getElementById("seller_contains").value = "";
+      document.getElementById("date_from").value = "";
+      document.getElementById("date_to").value = "";
+      
+      // Run search with empty filters
+      runSearch();
+    }
+
+    // Render chat results table
+    function renderChatTable(columns, rows) {
+      const thead = document.querySelector("#chatResultTable thead");
+      const tbody = document.querySelector("#chatResultTable tbody");
+      thead.innerHTML = "";
+      tbody.innerHTML = "";
+
+      if (!columns || columns.length === 0) {
+        thead.innerHTML = "<tr><th>No results</th></tr>";
+        tbody.innerHTML = "<tr><td class='text-muted'>Query returned no results</td></tr>";
+        return;
+      }
+
+      // Create header row
+      const hr = document.createElement("tr");
+      columns.forEach(c => {
+        const th = document.createElement("th");
+        th.textContent = c;
+        th.className = "small";
+        hr.appendChild(th);
+      });
+      thead.appendChild(hr);
+
+      // Create data rows
+      if (!rows || rows.length === 0) {
+        tbody.innerHTML = "<tr><td colspan='" + columns.length + "' class='text-center text-muted'>No data</td></tr>";
+      } else {
+        rows.forEach(r => {
+          const tr = document.createElement("tr");
+          r.forEach(v => {
+            const td = document.createElement("td");
+            td.textContent = (v === null || v === undefined) ? "" : String(v);
+            td.className = "small";
+            tr.appendChild(td);
+          });
+          tbody.appendChild(tr);
+        });
+      }
+    }
+
+    // Ask chat question
+    async function askChat() {
+      const q = document.getElementById("chatQuestion").value.trim();
+      if (!q) {
+        alert("Please enter a question");
+        return;
+      }
+
+      // Show loading state
+      document.getElementById("chatMeta").textContent = "Processing your question...";
+      document.getElementById("chatExplanation").textContent = "";
+      document.getElementById("chatSql").textContent = "";
+      renderChatTable([], []);
+
+      try {
+        const resp = await fetch(`${urlPrefix}/api/pricing-intelligence/chat`, {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({ question: q })
+        });
+
+        const data = await resp.json();
+
+        if (!resp.ok) {
+          throw new Error(data.error || "Chat request failed");
+        }
+
+        if (data.error) {
+          alert(data.error);
+          document.getElementById("chatMeta").textContent = "Error";
+          if (data.sql) document.getElementById("chatSql").textContent = data.sql;
+          return;
+        }
+
+        document.getElementById("chatMeta").textContent = `✓ Query executed in ${data.execution_time || "0"}ms`;
+        document.getElementById("chatSql").textContent = data.sql || "";
+        document.getElementById("chatExplanation").textContent = data.explanation || "";
+        renderChatTable(data.columns || [], data.rows || []);
+        
+      } catch (error) {
+        console.error("Chat error:", error);
+        document.getElementById("chatMeta").textContent = "Error";
+        alert("Failed to process question: " + error.message);
+      }
+    }
+
+    // Initialize everything when DOM is loaded
+    document.addEventListener("DOMContentLoaded", () => {
+      // Add event listeners
+      document.getElementById("runBtn").addEventListener("click", runSearch);
+      document.getElementById("clearFiltersBtn").addEventListener("click", clearFilters);
+      
+      // Run initial search
+      runSearch();
+
+      // Chat functionality
+      document.getElementById("chatAskBtn").addEventListener("click", askChat);
+      document.getElementById("chatQuestion").addEventListener("keydown", (e) => {
+        if (e.key === "Enter") askChat();
+      });
+
+      // Toggle SQL visibility
+      document.getElementById("toggleSqlBtn").addEventListener("click", () => {
+        const pre = document.getElementById("chatSql");
+        const btn = document.getElementById("toggleSqlBtn");
+        const isHidden = pre.style.display === "none" || !pre.style.display;
+        pre.style.display = isHidden ? "block" : "none";
+        btn.textContent = isHidden ? "Hide SQL" : "Show SQL";
+      });
+
+      // Add enter key support for filter inputs
+      const filterInputs = ["tender_id", "buyer_contains", "item_contains", "seller_contains"];
+      filterInputs.forEach(id => {
+        document.getElementById(id).addEventListener("keydown", (e) => {
+          if (e.key === "Enter") runSearch();
+        });
+      });
+    });
+  </script>
+  {% endif %}
+
+</div>
+
+{% endblock %}

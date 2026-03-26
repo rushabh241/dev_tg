@@ -1,0 +1,181 @@
+{% extends "admin.html" %}
+{% block content %}
+
+<div class="container-fluid px-4">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h4 class="fw-bold text-primary"><i class="fas fa-file-contract me-2"></i> Manage Tenders</h4>
+        <div>
+            <button class="btn btn-sm btn-outline-secondary me-2" onclick="location.reload()">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button class="btn btn-sm btn-outline-success" id="exportBtn" onclick="exportTableData()">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
+
+    <!-- Filter Section -->
+    <div class="card mb-4 shadow-sm">
+        <div class="card-body">
+            <div class="row g-3 align-items-center">
+                <!-- Organization Filter -->
+                <div class="col-md-4">
+                    <label for="orgFilter" class="form-label fw-semibold">Filter by Organization</label>
+                    <select class="form-select" id="orgFilter">
+                        <option value="">All Organizations</option>
+                        {% for org in organizations %}
+                            <option value="{{ org.id }}">{{ org.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Start Date -->
+                <div class="col-md-3">
+                    <label for="startDate" class="form-label fw-semibold">From Date (Created On)</label>
+                    <input type="date" id="startDate" class="form-control">
+                </div>
+
+                <!-- End Date -->
+                <div class="col-md-3">
+                    <label for="endDate" class="form-label fw-semibold">To Date (Created On)</label>
+                    <input type="date" id="endDate" class="form-control">
+                </div>
+
+                <!-- Search Box -->
+                <div class="col-md-4">
+                    <label for="searchBox" class="form-label fw-semibold">Search by Keyword</label>
+                    <input type="text" id="searchBox" class="form-control" placeholder="Search tenders...">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tender Table -->
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle" id="tendersTable">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th style="width: 15%;">Organization</th>
+                            <th style="width: 15%;">Tender ID</th>
+                            <th style="width: 20%;">Description</th>
+                            <th style="width: 10%;">Deadline</th>
+                            <th style="width: 10%;">Match Score (%)</th>
+                            <th style="width: 15%;">Created On</th>
+                            <!-- <th>Actions</th> -->
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for tender in tenders %}
+                        <tr 
+                        data-org="{{ tender.organization.id }}" 
+                        data-user="{{ tender.user_id or '' }}" 
+                        data-search="{{ tender.organization.name }} {{ tender.tender_id }} {{ tender.description }}">
+                            <td>{{ loop.index }}</td>
+                            <td style="width: 25%;">{{ tender.organization.name }}</td>
+                            <td>{{ tender.tender_id }}</td>
+                            <td>{{ tender.description[:60] }}{% if tender.description|length > 60 %}...{% endif %}</td>
+                            <td>{{ tender.due_date or 'N/A' }}</td>
+                            <td>{{ "%.2f"|format(tender.match_score or 0) }} %</td>
+                            <td>{{ tender.creation_date or 'N/A' }}</td>
+                            
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- JavaScript -->
+<script>
+    let tenderData = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const orgFilter = document.getElementById('orgFilter');
+        const searchBox = document.getElementById('searchBox');
+        const startDate = document.getElementById('startDate');
+        const endDate = document.getElementById('endDate');
+        const rows = document.querySelectorAll('#tendersTable tbody tr');
+
+        // Filter tenders by organization and search
+        orgFilter.addEventListener('change', applyFilters);
+        searchBox.addEventListener('keyup', applyFilters);
+        startDate.addEventListener('change', applyFilters);
+        endDate.addEventListener('change', applyFilters);
+
+        function applyFilters() {
+            const orgId = orgFilter.value;
+            const term = searchBox.value.toLowerCase();
+            const start = startDate.value ? new Date(startDate.value) : null;
+            const end = endDate.value ? new Date(endDate.value) : null;
+
+            rows.forEach(row => {
+                const matchOrg = !orgId || row.dataset.org === orgId;
+                const matchSearch = !term || row.dataset.search.toLowerCase().includes(term);
+
+                // Filter by creation date
+                let matchDate = true;
+                if (start || end) {
+                    const rowDate = row.children[6].innerText; // 7th column: Created On
+                    if (rowDate && rowDate !== 'N/A') {
+                        const creationDate = new Date(rowDate);
+                        if (start && creationDate < start) matchDate = false;
+                        if (end && creationDate > end) matchDate = false;
+                    } else {
+                        matchDate = false;
+                    }
+                }
+
+                row.style.display = (matchOrg && matchSearch && matchDate) ? '' : 'none';
+            });
+        }
+    });
+
+
+    function exportTableData() {
+        const table = document.getElementById('tendersTable');
+        const rows = table.querySelectorAll('tbody tr');
+        
+        // Get header row data
+        let csv = Array.from(table.querySelectorAll('thead th'))
+                       .map(th => `"${th.innerText.trim().replace(/"/g, '""')}"`)
+                       .join(',') + '\n';
+        
+        // Iterate over visible rows
+        rows.forEach(row => {
+            // Check if the row is visible (not set to display: none by the filter)
+            if (row.style.display !== 'none') {
+                const rowData = Array.from(row.querySelectorAll('td'))
+                    .map(td => {
+                        // Get the text content, trim it, and handle quotes for CSV
+                        const cellText = td.innerText.trim().replace(/"/g, '""');
+                        return `"${cellText}"`;
+                    })
+                    .join(',');
+                
+                csv += rowData + '\n';
+            }
+        });
+
+        // Create a Blob and trigger download
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        
+        a.href = url;
+        a.download = 'tenders_export.csv';
+        
+        // Append to body, click, and remove
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+</script>
+
+
+{% endblock %}

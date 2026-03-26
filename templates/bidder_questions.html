@@ -1,0 +1,601 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-1">
+    <div class="row mb-2">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h3>Suggested Bidder Questions</h3>
+                <p class="text-muted">Generate questions to ask the tender issuing authority for clarification</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tender Info -->
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">Tender Information</h5>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <p><strong>Title:</strong> {{ tender.title }}</p>
+                            <p><strong>Created:</strong> {{ tender.created_at.strftime('%B %d, %Y') }}</p>
+                        </div>
+                        <div class="col-md-6">
+                            <p><strong>Due Date:</strong> {{ tender.due_date }}</p>
+                            <p><strong>Question Deadline:</strong> {{ tender.question_deadline }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generate Questions Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0">
+                            <i class="fas fa-question-circle me-2"></i>Bidder Questions
+                        </h5>
+                        <button class="btn btn-primary" id="generateQuestionsButton" onclick="generateQuestions()">
+                            {% if questions_generated %}
+                            <i class="fas fa-sync-alt me-2"></i>Review Questions
+                            {% else %}
+                            <i class="fas fa-sync-alt me-2"></i>Generate Questions
+                            {% endif %}
+                        </button>
+                    </div>
+
+                    <div id="questionsLoadingIndicator" class="text-center my-5 d-none">
+                        <div class="spinner-border text-primary" role="status"></div>
+                        <p class="mt-3">Analyzing tender documents for potential questions...</p>
+                        <p class="text-muted small">This may take a minute, please wait</p>
+                    </div>
+
+                    <div id="noQuestionsMessage" class="text-center my-5">
+                        <i class="fas fa-question fa-3x mb-3 text-muted"></i>
+                        <p>No questions generated yet</p>
+                        <p class="text-muted">Click "Generate Questions" to analyze the tender and suggest questions to
+                            ask the issuing authority</p>
+                    </div>
+
+                    <div id="questionsContainer" class="d-none">
+                        <ul class="nav nav-tabs" id="questionTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="technical-tab" data-bs-toggle="tab"
+                                    data-bs-target="#technical" type="button" role="tab">
+                                    <i class="fas fa-tools me-2"></i>Technical
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="evaluation-tab" data-bs-toggle="tab"
+                                    data-bs-target="#evaluation" type="button" role="tab">
+                                    <i class="fas fa-chart-line me-2"></i>Evaluation
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="timeline-tab" data-bs-toggle="tab"
+                                    data-bs-target="#timeline" type="button" role="tab">
+                                    <i class="fas fa-calendar-alt me-2"></i>Timeline
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="payment-tab" data-bs-toggle="tab" data-bs-target="#payment"
+                                    type="button" role="tab">
+                                    <i class="fas fa-money-bill-wave me-2"></i>Payment
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="qualification-tab" data-bs-toggle="tab"
+                                    data-bs-target="#qualification" type="button" role="tab">
+                                    <i class="fas fa-user-check me-2"></i>Qualification
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="scope-tab" data-bs-toggle="tab" data-bs-target="#scope"
+                                    type="button" role="tab">
+                                    <i class="fas fa-th-list me-2"></i>Scope
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content p-3 border border-top-0 rounded-bottom" id="questionTabContent">
+                            <!-- Technical Questions Tab -->
+                            <div class="tab-pane fade show active" id="technical" role="tabpanel">
+                                <div id="technicalQuestions" class="question-items">
+                                    <div class="text-center text-muted py-4 no-questions-message">
+                                        <p>No technical questions identified</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Evaluation Questions Tab -->
+                            <div class="tab-pane fade" id="evaluation" role="tabpanel">
+                                <div id="evaluationQuestions" class="question-items">
+                                    <div class="text-center text-muted py-4 no-questions-message">
+                                        <p>No evaluation questions identified</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Timeline Questions Tab -->
+                            <div class="tab-pane fade" id="timeline" role="tabpanel">
+                                <div id="timelineQuestions" class="question-items">
+                                    <div class="text-center text-muted py-4 no-questions-message">
+                                        <p>No timeline questions identified</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Payment Questions Tab -->
+                            <div class="tab-pane fade" id="payment" role="tabpanel">
+                                <div id="paymentQuestions" class="question-items">
+                                    <div class="text-center text-muted py-4 no-questions-message">
+                                        <p>No payment questions identified</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Qualification Questions Tab -->
+                            <div class="tab-pane fade" id="qualification" role="tabpanel">
+                                <div id="qualificationQuestions" class="question-items">
+                                    <div class="text-center text-muted py-4 no-questions-message">
+                                        <p>No qualification questions identified</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Scope Questions Tab -->
+                            <div class="tab-pane fade" id="scope" role="tabpanel">
+                                <div id="scopeQuestions" class="question-items">
+                                    <div class="text-center text-muted py-4 no-questions-message">
+                                        <p>No scope questions identified</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Export Actions -->
+    <div class="row mt-4">
+        <div class="col-md-12">
+            <div class="d-flex justify-content-end">
+                <button id="exportQuestionsButton" class="btn btn-primary me-2 d-none" onclick="exportQuestions()">
+                    <i class="fas fa-file-export me-2"></i>Export Questions
+                </button>
+                <button id="printQuestionsButton" class="btn btn-primary d-none" onclick="printAllQuestions()">
+                    <i class="fas fa-print me-2"></i>Print Questions
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Print Styles -->
+<style>
+    @media print {
+        body * {
+            visibility: hidden;
+        }
+
+        #printSection,
+        #printSection * {
+            visibility: visible;
+        }
+
+        #printSection {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 100%;
+            padding: 20px;
+        }
+
+        .no-print {
+            display: none !important;
+        }
+
+        .tab-pane {
+            display: block !important;
+            opacity: 1 !important;
+            visibility: visible !important;
+        }
+
+        .tab-content>.tab-pane {
+            display: block !important;
+            page-break-inside: avoid;
+        }
+
+        .nav-tabs {
+            display: none !important;
+        }
+
+        .card {
+            border: 1px solid #ddd !important;
+            page-break-inside: avoid;
+        }
+
+        .question-category-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #333;
+            margin-top: 20px;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #007bff;
+        }
+
+        .print-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #333;
+        }
+
+        .print-header h1 {
+            font-size: 24px;
+            margin-bottom: 10px;
+        }
+
+        .print-header .tender-info {
+            text-align: left;
+            margin-top: 20px;
+        }
+
+        .print-question-details {
+            display: block !important;
+        }
+    }
+</style>
+
+<script>
+    let questionsData = null;
+
+    async function generateQuestions() {
+        // Show loading indicator
+        document.getElementById('questionsLoadingIndicator').classList.remove('d-none');
+        document.getElementById('noQuestionsMessage').classList.add('d-none');
+        document.getElementById('questionsContainer').classList.add('d-none');
+        document.getElementById('exportQuestionsButton').classList.add('d-none');
+        document.getElementById('printQuestionsButton').classList.add('d-none');
+
+        try {
+            const urlPrefix = "{{ url_prefix }}";
+            const response = await fetch(`${urlPrefix}/generate-bidder-questions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to generate questions');
+            }
+
+            questionsData = await response.json();
+
+            // Display questions by category
+            displayQuestions(questionsData);
+
+            // Show questions container and hide loading/no questions message
+            document.getElementById('questionsContainer').classList.remove('d-none');
+            document.getElementById('exportQuestionsButton').classList.remove('d-none');
+            document.getElementById('printQuestionsButton').classList.remove('d-none');
+
+        } catch (error) {
+            console.error('Error generating questions:', error);
+            showAlert('danger', 'Failed to generate questions. Please try again.');
+            document.getElementById('noQuestionsMessage').classList.remove('d-none');
+        } finally {
+            // Hide loading indicator
+            document.getElementById('questionsLoadingIndicator').classList.add('d-none');
+        }
+    }
+
+    function displayQuestions(data) {
+        if (!data.questions || data.questions.length === 0) {
+            showAlert('warning', 'No questions could be generated from the tender documents.');
+            document.getElementById('noQuestionsMessage').classList.remove('d-none');
+            return;
+        }
+
+        // Clear existing questions
+        const categories = ['technical', 'evaluation', 'timeline', 'payment', 'qualification', 'scope'];
+        categories.forEach(category => {
+            document.getElementById(`${category}Questions`).innerHTML = '';
+        });
+
+        // Group questions by category
+        const questionsByCategory = {};
+        categories.forEach(category => {
+            questionsByCategory[category] = [];
+        });
+
+        data.questions.forEach(question => {
+            const category = question.category.toLowerCase();
+            if (categories.includes(category)) {
+                questionsByCategory[category].push(question);
+            } else {
+                // If category doesn't match any tab, put in technical as default
+                questionsByCategory['technical'].push(question);
+            }
+        });
+
+        // Display questions for each category
+        categories.forEach(category => {
+            const container = document.getElementById(`${category}Questions`);
+            const questions = questionsByCategory[category];
+
+            if (questions.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center text-muted py-4">
+                        <p>No ${category} questions identified</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            questions.forEach((question, index) => {
+                html += `
+                    <div class="card mb-3">
+                        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Question ${index + 1}</h6>
+                            <div>
+                                <button class="btn btn-sm btn-primary no-print" 
+                                        onclick="toggleQuestionDetails('${category}', ${index})">
+                                    <i class="fas fa-chevron-down" id="${category}-toggle-${index}"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <p class="mb-0"><strong>${question.question}</strong></p>
+                            
+                            <div class="mt-3 print-question-details" id="${category}-details-${index}">
+                                <div class="row">
+                                    <div class="col-md-12">
+                                        <h6 class="mb-2">Why This Matters:</h6>
+                                        <p>${question.explanation}</p>
+                                    </div>
+                                </div>
+                                
+                                ${question.section_reference ? `
+                                <div class="mt-2">
+                                    <h6 class="mb-2">Reference:</h6>
+                                    <div class="alert alert-secondary py-2">
+                                        <i class="fas fa-bookmark me-2"></i>${question.section_reference}
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+
+            container.innerHTML = html;
+        });
+    }
+
+    function toggleQuestionDetails(category, index) {
+        const detailsElement = document.getElementById(`${category}-details-${index}`);
+        const toggleIcon = document.getElementById(`${category}-toggle-${index}`);
+
+        if (detailsElement.classList.contains('d-none')) {
+            detailsElement.classList.remove('d-none');
+            toggleIcon.classList.remove('fa-chevron-down');
+            toggleIcon.classList.add('fa-chevron-up');
+        } else {
+            detailsElement.classList.add('d-none');
+            toggleIcon.classList.remove('fa-chevron-up');
+            toggleIcon.classList.add('fa-chevron-down');
+        }
+    }
+
+    function exportQuestions() {
+        if (!questionsData || !questionsData.questions) {
+            showAlert('warning', 'No questions to export');
+            return;
+        }
+
+        // Create a CSV string
+        let csv = 'Category,Question,Explanation,Reference\n';
+
+        questionsData.questions.forEach(question => {
+            // Escape commas and quotes in text fields
+            const category = question.category.replace(/"/g, '""');
+            const questionText = question.question.replace(/"/g, '""');
+            const explanation = question.explanation.replace(/"/g, '""');
+            const reference = question.section_reference ? question.section_reference.replace(/"/g, '""') : '';
+
+            csv += `"${category}","${questionText}","${explanation}","${reference}"\n`;
+        });
+
+        // Create a Blob and download link
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'bidder_questions.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+    }
+
+    function printAllQuestions() {
+        if (!questionsData || !questionsData.questions) {
+            showAlert('warning', 'No questions to print');
+            return;
+        }
+
+        // 1. Create an invisible iframe element
+        const printFrame = document.createElement('iframe');
+        printFrame.setAttribute('style', 'display: none; height:0; width:0; border:none;');
+        printFrame.setAttribute('id', 'printFrame');
+        document.body.appendChild(printFrame);
+
+        const frameWindow = printFrame.contentWindow;
+        const frameDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+
+        // Function to clean up the iframe
+        const cleanup = () => {
+            const frame = document.getElementById('printFrame');
+            if (frame) {
+                document.body.removeChild(frame);
+            }
+        };
+
+        // 2. Build the full HTML content for the iframe document
+        let printContent = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Tender Clarification Questions - Print</title>
+            <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+            <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet">
+            
+            <style>
+            @media print {
+                /* Include all necessary print styles here */
+                .question-category-title { font-size: 18px; font-weight: bold; color: #333; margin-top: 20px; margin-bottom: 15px; padding-bottom: 5px; border-bottom: 2px solid #007bff; }
+                .print-header { text-align: center; margin-bottom: 30px; padding-bottom: 20px; border-bottom: 2px solid #333; }
+                .print-header h1 { font-size: 24px; margin-bottom: 10px; }
+                .print-header .tender-info { text-align: left; margin-top: 20px; border: 1px solid #ddd; padding: 15px; background-color: #f8f9fa; }
+                .card { border: 1px solid #ddd !important; page-break-inside: avoid; box-shadow: none !important; }
+                .print-question-details { display: block !important; }
+            }
+            body { padding: 20px; }
+            .alert-secondary { color: #495057; background-color: #e2e6ea; border-color: #dae0e5; }
+            </style>
+        </head>
+        <body>
+            <div class="container-fluid">
+                <div class="print-header">
+                    <h1>Bidder Questions for Tender Clarification</h1>
+                    <div class="tender-info">
+                        <h4>Tender Information:</h4>
+                        <p><strong>Title:</strong> {{ tender.title }}</p>
+                        <p><strong>Created:</strong> {{ tender.created_at.strftime('%B %d, %Y') }}</p>
+                        <p><strong>Due Date:</strong> {{ tender.due_date }}</p>
+                        <p><strong>Question Deadline:</strong> {{ tender.question_deadline }}</p>
+                    </div>
+                    <p class="mt-3 text-muted small">Generated on: ${new Date().toLocaleDateString()}</p>
+                </div>
+    `;
+
+        // --- Content Generation (Populating the questions) ---
+
+        const categories = [
+            { id: 'technical', title: 'Technical Questions' },
+            { id: 'evaluation', title: 'Evaluation Questions' },
+            { id: 'timeline', title: 'Timeline Questions' },
+            { id: 'payment', title: 'Payment Questions' },
+            { id: 'qualification', title: 'Qualification Questions' },
+            { id: 'scope', title: 'Scope Questions' }
+        ];
+
+        const questionsByCategory = {};
+        categories.forEach(category => { questionsByCategory[category.id] = []; });
+        questionsData.questions.forEach(question => {
+            const category = question.category.toLowerCase();
+            if (questionsByCategory[category]) {
+                questionsByCategory[category].push(question);
+            } else {
+                questionsByCategory['technical'].push(question);
+            }
+        });
+
+        categories.forEach(category => {
+            const questions = questionsByCategory[category.id];
+            if (questions.length > 0) {
+                printContent += `<div class="question-category mb-5"><h3 class="question-category-title">${category.title}</h3>`;
+                questions.forEach((question, index) => {
+                    printContent += `
+                    <div class="card mb-3 shadow-sm">
+                        <div class="card-header bg-light"><h6 class="mb-0">Question ${index + 1}</h6></div>
+                        <div class="card-body">
+                            <p class="mb-0"><strong>${question.question}</strong></p>
+                            <div class="mt-3 print-question-details">
+                                <h6 class="mb-2">Why This Matters:</h6>
+                                <p>${question.explanation}</p>
+                                ${question.section_reference ? `
+                                <div class="mt-2">
+                                    <h6 class="mb-2">Reference:</h6>
+                                    <div class="alert alert-secondary py-2">
+                                        <i class="fas fa-bookmark me-2"></i>${question.section_reference}
+                                    </div>
+                                </div>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                });
+                printContent += '</div>';
+            }
+        });
+
+        printContent += `
+                <div class="print-footer mt-4 pt-4 border-top">
+                    <p><strong>Total Questions Generated:</strong> ${questionsData.questions.length}</p>
+                    <p class="text-muted small">Generated by Tender Management System on ${new Date().toLocaleString()}</p>
+                </div>
+            </div>
+        </body>
+        </html>
+    `;
+        // Write content to the iframe
+        frameDoc.open();
+        frameDoc.write(printContent);
+        frameDoc.close();
+
+        // 4. Trigger print using a short timeout for reliability and removal cleanup
+
+        // Use a small timeout to let the browser fully render the document inside the iframe
+        setTimeout(() => {
+            try {
+                // Focus and immediately trigger print
+                frameWindow.focus();
+                frameWindow.print();
+            } catch (e) {
+                console.error("Print trigger failed:", e);
+            }
+
+            // Schedule the cleanup. 
+            // This short delay ensures the iframe is removed AFTER the print dialog is successfully shown, 
+            // regardless of whether the user cancels or prints.
+            setTimeout(cleanup, 200);
+
+        }, 50); // Initial 50ms delay for iframe initialization
+    }
+
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+
+        // Insert before the first card
+        const firstCard = document.querySelector('.card');
+        firstCard.parentNode.insertBefore(alertDiv, firstCard);
+
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 500);
+        }, 5000);
+    }
+</script>
+{% endblock %}

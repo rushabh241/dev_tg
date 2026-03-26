@@ -1,0 +1,481 @@
+{% extends "admin.html" %}
+{% block title %}Run Summary{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-3">
+
+  {% set total_runs = today_total or 0 %}
+  {% set success_runs = today_completed or 0 %}
+  {% set failed_runs = today_failed or 0 %}
+  {% set attention_runs = today_attention or 0 %}
+
+  <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+    <div>
+      <h4 class="mb-1">Job Monitoring</h4>
+      <div class="text-muted small">
+        Daily overview of tender search jobs, outcomes, and actions needed for {{ today_date }}.
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <button class="btn btn-outline-secondary btn-sm" id="btnClearFilters">
+        <i class="bi bi-x-circle me-1"></i>Clear Filters
+      </button>
+    </div>
+  </div>
+
+  <!-- KPI Cards -->
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted small mb-1">Today's Runs</div>
+          <div class="fs-4 fw-semibold" id="kpiTotalRuns">{{ total_runs }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted small mb-1">Completed Today</div>
+          <div class="fs-4 fw-semibold text-success" id="kpiCompletedRuns">{{ success_runs }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted small mb-1">Failed Today</div>
+          <div class="fs-4 fw-semibold text-danger" id="kpiFailedRuns">{{ failed_runs }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-0">
+        <div class="card-body">
+          <div class="text-muted small mb-1">Need Attention Today</div>
+          <div class="fs-4 fw-semibold text-warning" id="kpiAttentionRuns">{{ attention_runs }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter Section -->
+  <div class="card mb-4 shadow-sm">
+    <div class="card-body">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-4">
+          <label for="orgFilter" class="form-label fw-semibold">Filter by Organization</label>
+          <select class="form-select" id="orgFilter">
+            <option value="">All Organizations</option>
+            {% for org in organizations %}
+              <option value="{{ org.id }}">{{ org.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+
+        <div class="col-md-3">
+          <label for="dateFilter" class="form-label fw-semibold">Date (Run Finished On)</label>
+          <input type="date" id="dateFilter" class="form-control">
+        </div>
+
+        <div class="col-md-5">
+          <div class="d-flex flex-wrap gap-2 justify-content-md-end">
+            <span class="badge text-bg-light border" id="shownCountBadge">Showing: 0</span>
+            <span class="badge text-bg-light border" id="totalCountBadge">Total: {{ runs|length }}</span>
+            <span class="badge text-bg-light border" id="sortStateBadge">Sort: Latest first</span>
+          </div>
+        </div>
+      </div>
+
+      <hr class="my-3">
+
+      <div class="d-flex flex-wrap gap-2 align-items-center">
+        <span class="text-muted small">Tip:</span>
+        <span class="badge rounded-pill text-bg-light border">
+          <i class="bi bi-funnel me-1"></i>Use filters to narrow results
+        </span>
+        <span class="badge rounded-pill text-bg-light border">
+          <i class="bi bi-arrow-down-up me-1"></i>Click “Run Date” to sort
+        </span>
+        <span class="badge rounded-pill text-bg-light border">
+          <i class="bi bi-info-circle me-1"></i>Open “View Details” only when needed
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Table -->
+  <div class="card shadow-sm">
+    <div class="card-body">
+      <div class="table-responsive">
+        <table class="table align-middle table-hover" id="runsTable">
+          <thead class="table-light">
+            <tr>
+              <th style="min-width: 180px;">Organization</th>
+              <th style="max-width: 40px;">Search Term</th>
+              <th class="cursor-pointer" id="sortByFinishedAt" style="min-width: 170px;">
+                Run Date <i class="bi bi-arrow-down ms-1" id="sortIcon"></i>
+              </th>
+              <th style="min-width: 140px;">Job Result</th>
+              <th class="text-end" style="min-width: 160px;">Relevant Tenders Found</th>
+              <th style="min-width: 170px;">Notifications</th>
+              <th style="min-width: 150px;">Attention</th>
+              <th style="min-width: 140px;">Details</th>
+            </tr>
+          </thead>
+
+          <tbody id="runsTbody">
+            {% for r in runs %}
+              {% set finished_raw = (r.run_finished_at|string) if r.run_finished_at else '' %}
+              {% set started_raw = (r.run_started_at|string) if r.run_started_at else '' %}
+              {% set finished_date = finished_raw[:10] if finished_raw else '' %}
+              {% set finished_time = finished_raw[11:19] if finished_raw|length >= 19 else '' %}
+              {% set finished_iso = finished_raw.replace(' ', 'T') if finished_raw else '' %}
+              {% set st = (r.status or 'INCOMPLETE')|upper %}
+              {% set fs = (r.flag_status or 'GREEN')|upper %}
+              {% set email_status = (r.email_status or 'NONE')|upper %}
+
+              <tr
+                data-org-id="{{ r.org_id or '' }}"
+                data-finished-date="{{ finished_date }}"
+                data-finished-ts="{{ finished_iso }}"
+                data-status="{{ st }}"
+                data-attention="{{ '1' if fs == 'RED' else '0' }}"
+              >
+                <td class="fw-semibold">
+                  {{ r.org_name or ('Org #' ~ (r.org_id or '—')) }}
+                  <div class="text-muted small">Org ID: {{ r.org_id or '—' }}</div>
+                </td>
+
+                <td>
+                  {% if r.keywords_used %}
+                    <span class="badge text-bg-light border">{{ r.keywords_used }}</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  {% if finished_raw %}
+                    <div class="fw-semibold">{{ finished_date }}</div>
+                    <div class="text-muted small">{{ finished_time }}</div>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  {% if st == 'SUCCESS' %}
+                    <span class="badge text-bg-success">Completed</span>
+                  {% elif st == 'FAILED' %}
+                    <span class="badge text-bg-danger">Failed</span>
+                  {% else %}
+                    <span class="badge text-bg-warning">Incomplete</span>
+                  {% endif %}
+                </td>
+
+                <td class="text-end fw-semibold">
+                  {{ r.matched_tenders if r.matched_tenders is not none else '—' }}
+                </td>
+
+                <td>
+                  {% if email_status == 'SENT' %}
+                    <span class="badge text-bg-success">Email sent</span>
+                  {% elif email_status == 'NO_EMAIL_NEEDED' %}
+                    <span class="badge text-bg-secondary">No email needed</span>
+                  {% elif email_status == 'FAILED' %}
+                    <span class="badge text-bg-danger">Email failed</span>
+                  {% else %}
+                    <span class="badge text-bg-light border">No data</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  {% if fs == 'RED' %}
+                    <span class="badge text-bg-warning" title="{{ r.flag_note or 'This run took longer than expected.' }}">Needs Review</span>
+                  {% elif fs == 'YELLOW' %}
+                    <span class="badge text-bg-warning">Reviewed</span>
+                  {% else %}
+                    <span class="badge text-bg-success">Normal</span>
+                  {% endif %}
+                </td>
+
+                <td>
+                  <button class="btn btn-outline-primary btn-sm" type="button"
+                          data-bs-toggle="collapse" data-bs-target="#details{{ r.id }}"
+                          aria-expanded="false" aria-controls="details{{ r.id }}">
+                    View Details
+                  </button>
+                </td>
+              </tr>
+
+              <tr class="details-row">
+                <td colspan="8" class="p-0 border-0">
+                  <div class="collapse" id="details{{ r.id }}">
+                    <div class="border rounded m-2 p-3 bg-light-subtle">
+                      <div class="row g-3">
+
+                        <!-- Business Summary -->
+                        <div class="col-lg-6">
+                          <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                              <h6 class="card-title mb-3">Business Summary</h6>
+
+                              <div class="row g-2 small">
+                                <div class="col-6 text-muted">Organization</div>
+                                <div class="col-6">{{ r.org_name or ('Org #' ~ (r.org_id or '—')) }}</div>
+
+                                <div class="col-6 text-muted">Search Term</div>
+                                <div class="col-6">{{ r.keywords_used or '—' }}</div>
+
+                                <div class="col-6 text-muted">Run Started</div>
+                                <div class="col-6">{{ started_raw or '—' }}</div>
+
+                                <div class="col-6 text-muted">Run Finished</div>
+                                <div class="col-6">{{ finished_raw or '—' }}</div>
+
+                                <div class="col-6 text-muted">Time Taken</div>
+                                <div class="col-6">{{ r.duration_hms or '—' }}</div>
+
+                                <div class="col-6 text-muted">Job Result</div>
+                                <div class="col-6">
+                                  {% if st == 'SUCCESS' %}
+                                    Completed
+                                  {% elif st == 'FAILED' %}
+                                    Failed
+                                  {% else %}
+                                    Incomplete
+                                  {% endif %}
+                                </div>
+
+                                <div class="col-6 text-muted">Relevant Tenders Found</div>
+                                <div class="col-6">{{ r.matched_tenders if r.matched_tenders is not none else '—' }}</div>
+
+                                <div class="col-6 text-muted">Notifications</div>
+                                <div class="col-6">
+                                  {% if email_status == 'SENT' %}
+                                    Email sent
+                                  {% elif email_status == 'NO_EMAIL_NEEDED' %}
+                                    No email needed
+                                  {% elif email_status == 'FAILED' %}
+                                    Email failed
+                                  {% else %}
+                                    No notification data
+                                  {% endif %}
+                                </div>
+
+                                <div class="col-6 text-muted">Notification Note</div>
+                                <div class="col-6">{{ r.email_note or '—' }}</div>
+
+                                <div class="col-6 text-muted">Attention</div>
+                                <div class="col-6">{{ r.flag_note if r.flag_note else 'No special attention needed' }}</div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Technical Diagnostics -->
+                        <div class="col-lg-6">
+                          <div class="card h-100 border-0 shadow-sm">
+                            <div class="card-body">
+                              <h6 class="card-title mb-3">Technical Diagnostics</h6>
+
+                              <div class="row g-2 small">
+                                <div class="col-6 text-muted">Analyzed with API</div>
+                                <div class="col-6">{{ r.tenders_analyzed_with_api if r.tenders_analyzed_with_api is not none else '—' }}</div>
+
+                                <div class="col-6 text-muted">Filtered Out</div>
+                                <div class="col-6">{{ r.tenders_filtered_out if r.tenders_filtered_out is not none else '—' }}</div>
+
+                                <div class="col-6 text-muted">API Calls</div>
+                                <div class="col-6">{{ r.api_calls if r.api_calls is not none else '—' }}</div>
+
+                                <div class="col-6 text-muted">Tokens Used</div>
+                                <div class="col-6">{{ r.tokens_used if r.tokens_used is not none else '—' }}</div>
+
+                                <div class="col-6 text-muted">Email Recipients</div>
+                                <div class="col-6">{{ r.email_recipients_count if r.email_recipients_count is not none else '—' }}</div>
+
+                                <div class="col-6 text-muted">Tenders in Email</div>
+                                <div class="col-6">{{ r.email_tenders_count if r.email_tenders_count is not none else '—' }}</div>
+
+                                <div class="col-6 text-muted">Memory Usage</div>
+                                <div class="col-6">
+                                  {% if r.memory_usage_mb is not none %}
+                                    {{ "%.2f"|format(r.memory_usage_mb) }} MB
+                                  {% else %}
+                                    —
+                                  {% endif %}
+                                </div>
+
+                                <div class="col-6 text-muted">Chrome Closed</div>
+                                <div class="col-6">{{ 'Yes' if r.chrome_closed else 'No' }}</div>
+
+                                <div class="col-6 text-muted">Source Log</div>
+                                <div class="col-6">{{ r.log_file or '—' }}</div>
+                              </div>
+
+                              <hr>
+
+                              <div>
+                                <div class="text-muted small mb-2">Issue Details</div>
+                                {% if r.error_messages and r.error_messages|length > 0 %}
+                                  <pre class="mb-0 small bg-white border rounded p-2" style="white-space: pre-wrap;">{{ r.error_messages }}</pre>
+                                {% else %}
+                                  <div class="small text-muted">No technical errors recorded.</div>
+                                {% endif %}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                      </div>
+                    </div>
+                  </div>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      {% if runs|length == 0 %}
+        <div class="text-center text-muted py-4">
+          No runs found yet.
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+<style>
+  .cursor-pointer { cursor: pointer; }
+  .bg-light-subtle { background: #fafafe; }
+  .details-row td { background: transparent !important; }
+</style>
+
+<script>
+(function () {
+  const orgFilter = document.getElementById('orgFilter');
+  const dateFilter = document.getElementById('dateFilter');
+  const btnClear = document.getElementById('btnClearFilters');
+
+  const tbody = document.getElementById('runsTbody');
+  const allRows = Array.from(tbody.querySelectorAll('tr'));
+  const primaryRows = allRows.filter(row => !row.classList.contains('details-row'));
+
+  const shownBadge = document.getElementById('shownCountBadge');
+  const totalBadge = document.getElementById('totalCountBadge');
+  const sortBadge = document.getElementById('sortStateBadge');
+
+  const sortHeader = document.getElementById('sortByFinishedAt');
+  const sortIcon = document.getElementById('sortIcon');
+
+  const kpiTotalRuns = document.getElementById('kpiTotalRuns');
+  const kpiCompletedRuns = document.getElementById('kpiCompletedRuns');
+  const kpiFailedRuns = document.getElementById('kpiFailedRuns');
+  const kpiAttentionRuns = document.getElementById('kpiAttentionRuns');
+
+  let sortDesc = true;
+
+  function getPairRows() {
+    return primaryRows.map(primary => {
+      const details = primary.nextElementSibling && primary.nextElementSibling.classList.contains('details-row')
+        ? primary.nextElementSibling
+        : null;
+      return { primary, details };
+    });
+  }
+
+  function parseIso(ts) {
+    if (!ts) return null;
+    const d = new Date(ts);
+    return isNaN(d.getTime()) ? null : d;
+  }
+
+  function matchesFilters(row) {
+    const selectedOrg = orgFilter.value;
+    const selectedDate = dateFilter.value;
+
+    const rowOrg = row.getAttribute('data-org-id') || '';
+    const rowDate = row.getAttribute('data-finished-date') || '';
+
+    if (selectedOrg && rowOrg !== selectedOrg) return false;
+    if (selectedDate && rowDate !== selectedDate) return false;
+
+    return true;
+  }
+
+  function updateKpis() {
+    const visibleRows = primaryRows.filter(r => r.style.display !== 'none');
+    const completed = visibleRows.filter(r => (r.getAttribute('data-status') || '') === 'SUCCESS').length;
+    const failed = visibleRows.filter(r => (r.getAttribute('data-status') || '') === 'FAILED').length;
+    const attention = visibleRows.filter(r => (r.getAttribute('data-attention') || '0') === '1').length;
+
+    // cards on UI are meant to be daily by backend, so do not overwrite those with filtered counts
+    shownBadge.textContent = `Showing: ${visibleRows.length}`;
+  }
+
+  function setCounts() {
+    const total = primaryRows.length;
+    const shown = primaryRows.filter(r => r.style.display !== 'none').length;
+    totalBadge.textContent = `Total: ${total}`;
+    shownBadge.textContent = `Showing: ${shown}`;
+  }
+
+  function applyFilters() {
+    getPairRows().forEach(({ primary, details }) => {
+      const show = matchesFilters(primary);
+      primary.style.display = show ? '' : 'none';
+      if (details) {
+        details.style.display = show ? '' : 'none';
+      }
+    });
+
+    setCounts();
+    updateKpis();
+  }
+
+  function sortByFinishedAt() {
+    const pairs = getPairRows();
+
+    pairs.sort((a, b) => {
+      const ta = parseIso(a.primary.getAttribute('data-finished-ts'));
+      const tb = parseIso(b.primary.getAttribute('data-finished-ts'));
+
+      if (!ta && !tb) return 0;
+      if (!ta) return 1;
+      if (!tb) return -1;
+
+      return sortDesc ? (tb - ta) : (ta - tb);
+    });
+
+    pairs.forEach(({ primary, details }) => {
+      tbody.appendChild(primary);
+      if (details) tbody.appendChild(details);
+    });
+
+    sortIcon.className = sortDesc ? 'bi bi-arrow-down ms-1' : 'bi bi-arrow-up ms-1';
+    sortBadge.textContent = sortDesc ? 'Sort: Latest first' : 'Sort: Oldest first';
+
+    applyFilters();
+  }
+
+  orgFilter.addEventListener('change', applyFilters);
+  dateFilter.addEventListener('change', applyFilters);
+
+  btnClear.addEventListener('click', () => {
+    orgFilter.value = '';
+    dateFilter.value = '';
+    applyFilters();
+  });
+
+  sortHeader.addEventListener('click', () => {
+    sortDesc = !sortDesc;
+    sortByFinishedAt();
+  });
+
+  sortByFinishedAt();
+})();
+</script>
+{% endblock %}

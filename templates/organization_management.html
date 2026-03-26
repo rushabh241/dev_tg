@@ -1,0 +1,1578 @@
+{% extends 'base.html' %}
+
+{% block title %}Organization Management{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row">
+        <div class="col-12">
+            <h3>Organization Management</h3><br>
+
+            <!-- Tabs navigation -->
+            <ul class="nav nav-tabs mb-4" id="myTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="details-tab" data-bs-toggle="tab" data-bs-target="#details"
+                        type="button" role="tab" aria-controls="details" aria-selected="true">
+                        Organization Details
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="setup-tab" data-bs-toggle="tab" data-bs-target="#setup" type="button"
+                        role="tab" aria-controls="setup" aria-selected="false">
+                        Organization Setup
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="search-config-tab" data-bs-toggle="tab" data-bs-target="#search-config"
+                        type="button" role="tab" aria-controls="search-config" aria-selected="false">
+                        GEM Search Configuration
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="brochures-tab" data-bs-toggle="tab" data-bs-target="#brochures"
+                        type="button" role="tab" aria-controls="brochures" aria-selected="false">
+                        Brochures
+                    </button>
+                </li>
+            </ul>
+
+            <!-- Tab content -->
+            <div class="tab-content" id="myTabContent">
+                <!-- Organization Details Tab -->
+                <div class="tab-pane fade show active" id="details" role="tabpanel" aria-labelledby="details-tab">
+                    <!-- Include Organization Details Content -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Organization Details</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-3 fw-bold">Name:</div>
+                                <div class="col-md-9">{{ organization.name }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-3 fw-bold">Description:</div>
+                                <div class="col-md-9">{{ organization.description or 'No description available' }}</div>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-md-3 fw-bold">Created:</div>
+                                <div class="col-md-9">{{ organization.created_at.strftime('%Y-%m-%d') }}</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Organization Users</h5>
+                            <button class="btn btn-sm btn-primary" type="button" data-bs-toggle="modal"
+                                data-bs-target="#verifyUserModal">
+                                <i class="fas fa-key me-1"></i> Reset Password
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Username</th>
+                                            <th>Email</th>
+                                            <th>Last Login</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for user in users %}
+                                        <tr>
+                                            <td>{{ user.username }}</td>
+                                            <td>{{ user.email }}</td>
+                                            <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M') if user.last_login else
+                                                'Never' }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <p class="mt-3 text-muted">Note: User management is handled directly in the database. Please
+                                contact your administrator to add or remove users.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Organization Setup Tab (Service Definitions & Constraints) -->
+                <div class="tab-pane fade" id="setup" role="tabpanel" aria-labelledby="setup-tab">
+                    <!-- Service Definition Section -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">Service & Product Definition</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="serviceDefinitionForm">
+                                <div class="mb-3">
+                                    <label for="serviceDefinition" class="form-label">Describe your organization's
+                                        services and products</label>
+                                    {% if organization.name == 'Demo Organization' %}
+                                    <textarea class="form-control" id="serviceDefinition" rows="6"></textarea>
+                                    {% else %}
+                                    <textarea class="form-control" id="serviceDefinition"
+                                        rows="6">{{ service_product_definition }}</textarea>
+                                    {% endif %}
+                                    <div class="form-text">This description is used to match tenders with your
+                                        organization's capabilities.</div>
+                                </div>
+                                {% if current_user.role == 'admin' %}
+                                <button type="button" class="btn btn-primary" id="saveServiceDefinition">Save
+                                    Definition</button>
+                                {% endif %}
+                            </form>
+                        </div>
+                    </div>
+
+                    <!-- Constraints Section -->
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Organizational Constraints</h5>
+                        </div>
+                        <div class="card-body">
+                            <!-- Constraints tabs -->
+                            <ul class="nav nav-tabs" id="constraintsTabs" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="financial-tab" data-bs-toggle="tab"
+                                        data-bs-target="#financial" type="button" role="tab">Financial</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="technical-tab" data-bs-toggle="tab"
+                                        data-bs-target="#technical" type="button" role="tab">Technical</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="legal-tab" data-bs-toggle="tab" data-bs-target="#legal"
+                                        type="button" role="tab">Legal</button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="other-tab" data-bs-toggle="tab" data-bs-target="#other"
+                                        type="button" role="tab">Other</button>
+                                </li>
+                            </ul>
+
+                            <!-- Constraints tab content -->
+                            <div class="tab-content p-3 border border-top-0 rounded-bottom" id="constraintsTabContent">
+                                <!-- Financial Constraints Tab -->
+                                <div class="tab-pane fade show active" id="financial" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6>Financial Constraints</h6>
+                                        {% if current_user.role == 'admin' %}
+                                        <button type="button" class="btn btn-sm btn-primary add-constraint"
+                                            data-category="financial">Add Constraint</button>
+                                        {% endif %}
+                                    </div>
+                                    <ul class="list-group constraint-list" id="financialConstraints">
+                                        {% for constraint in financial_constraints %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center"
+                                            data-id="{{ constraint.id }}">
+                                            <span class="constraint-text">{{ constraint.description }}</span>
+                                            {% if current_user.role == 'admin' %}
+                                            <div class="btn-group">
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-primary edit-constraint"><i
+                                                        class="fas fa-edit"></i></button>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-danger delete-constraint"><i
+                                                        class="fas fa-trash"></i></button>
+                                            </div>
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+
+                                <!-- Technical Constraints Tab -->
+                                <div class="tab-pane fade" id="technical" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6>Technical Constraints</h6>
+                                        {% if current_user.role == 'admin' %}
+                                        <button type="button" class="btn btn-sm btn-primary add-constraint"
+                                            data-category="technical">Add Constraint</button>
+                                        {% endif %}
+                                    </div>
+                                    <ul class="list-group constraint-list" id="technicalConstraints">
+                                        {% for constraint in technical_constraints %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center"
+                                            data-id="{{ constraint.id }}">
+                                            <span class="constraint-text">{{ constraint.description }}</span>
+                                            {% if current_user == 'admin' %}
+                                            <div class="btn-group">
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-primary edit-constraint"><i
+                                                        class="fas fa-edit"></i></button>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-danger delete-constraint"><i
+                                                        class="fas fa-trash"></i></button>
+                                            </div>
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+
+                                <!-- Legal Constraints Tab -->
+                                <div class="tab-pane fade" id="legal" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6>Legal Constraints</h6>
+                                        {% if current_user.role == 'admin' %}
+                                        <button type="button" class="btn btn-sm btn-primary add-constraint"
+                                            data-category="legal">Add Constraint</button>
+                                        {% endif %}
+                                    </div>
+                                    <ul class="list-group constraint-list" id="legalConstraints">
+                                        {% for constraint in legal_constraints %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center"
+                                            data-id="{{ constraint.id }}">
+                                            <span class="constraint-text">{{ constraint.description }}</span>
+                                            {% if current_user.role == 'admin'%}
+                                            <div class="btn-group">
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-primary edit-constraint"><i
+                                                        class="fas fa-edit"></i></button>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-danger delete-constraint"><i
+                                                        class="fas fa-trash"></i></button>
+                                            </div>
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+
+                                <!-- Other Constraints Tab -->
+                                <div class="tab-pane fade" id="other" role="tabpanel">
+                                    <div class="d-flex justify-content-between align-items-center mb-3">
+                                        <h6>Other Constraints</h6>
+                                        {% if current_user.role == 'admin' %}
+                                        <button type="button" class="btn btn-sm btn-primary add-constraint"
+                                            data-category="other">Add Constraint</button>
+                                        {% endif %}
+                                    </div>
+                                    <ul class="list-group constraint-list" id="otherConstraints">
+                                        {% for constraint in other_constraints %}
+                                        <li class="list-group-item d-flex justify-content-between align-items-center"
+                                            data-id="{{ constraint.id }}">
+                                            <span class="constraint-text">{{ constraint.description }}</span>
+                                            {% if current_user.role == 'admin' %}
+                                            <div class="btn-group">
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-primary edit-constraint"><i
+                                                        class="fas fa-edit"></i></button>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-outline-danger delete-constraint"><i
+                                                        class="fas fa-trash"></i></button>
+                                            </div>
+                                            {% endif %}
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Search Configuration Tab - WITH INLINE ADD AND EDIT MODALS -->
+                <div class="tab-pane fade" id="search-config" role="tabpanel" aria-labelledby="search-config-tab">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h5>GEM Search Configurations</h5>
+                        <!-- CHANGED: Modal trigger instead of external link -->
+                        {% if current_user.role == 'admin' %}
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addSearchConfigModal">
+                            <i class="fas fa-plus"></i> Add New Configuration
+                        </button>
+                        {% endif %}
+                    </div>
+
+                    <!-- SUB-TABS FOR SEARCH CONFIGS AND RECIPIENTS -->
+                    <ul class="nav nav-tabs mb-4" id="searchConfigTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="search-configs-subtab" data-bs-toggle="tab"
+                                data-bs-target="#search-configs-content" type="button" role="tab">
+                                <i class="fas fa-search me-2"></i>Search Configurations
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="notification-recipients-subtab" data-bs-toggle="tab"
+                                data-bs-target="#notification-recipients-content" type="button" role="tab">
+                                <i class="fas fa-envelope me-2"></i>Notification Recipients
+                            </button>
+                        </li>
+                    </ul>
+
+                    <div class="tab-content" id="searchConfigTabContent">
+                        <!-- Search Configurations Content -->
+                        <div class="tab-pane fade show active" id="search-configs-content" role="tabpanel">
+                            {% if search_configs %}
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">Scheduled Searches</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="table-responsive">
+                                        <table class="table table-striped">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th style="width: 25%;">Created By</th>
+                                                    <th>Keyword</th>
+                                                    <th>Max Tenders</th>
+                                                    <th>Execution Time</th>
+                                                    <th>Last Run</th>
+                                                    <th>Status</th>
+                                                    {% if current_user.role == 'admin' %}
+                                                    <th>Actions</th>
+                                                    {% endif %}
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {% for config in search_configs %}
+                                                <tr>
+                                                    <td>{{ config.id }}</td>
+                                                    <td style="width: 25%;">{{ config.user.username }}</td>
+                                                    <td>{{ config.search_keyword or 'All Tenders' }}</td>
+                                                    <td>{{ config.max_tenders }}</td>
+                                                    <td>{{ config.execution_time }}</td>
+                                                    <td>{{ config.last_run.strftime('%Y-%m-%d %H:%M') if config.last_run
+                                                        else 'Never' }}</td>
+                                                    <td>
+                                                        {% if config.is_active %}
+                                                        <span class="badge bg-success">Active</span>
+                                                        {% else %}
+                                                        <span class="badge bg-secondary">Inactive</span>
+                                                        {% endif %}
+                                                    </td>
+                                                    {% if current_user.role == 'admin' %}
+                                                    <td>
+                                                        <div class="btn-group">
+                                                            <!-- CHANGED: Edit button now opens modal -->
+                                                            <button class="btn btn-sm btn-outline-primary"
+                                                                onclick="editSearchConfig({{ config.id }}, '{{ config.search_keyword or '' }}', {{ config.max_tenders }}, '{{ config.execution_time }}', {{ config.is_active|lower }})">
+                                                                <i class="fas fa-edit"></i>
+                                                            </button>
+                                                            <form
+                                                                action="{{ url_for('toggle_search_config', config_id=config.id) }}"
+                                                                method="POST" class="d-inline">
+                                                                <button type="submit"
+                                                                    class="btn btn-sm btn-outline-{{ 'warning' if config.is_active else 'success' }}">
+                                                                    <i
+                                                                        class="fas fa-{{ 'pause' if config.is_active else 'play' }}"></i>
+                                                                </button>
+                                                            </form>
+                                                            <form
+                                                                action="{{ url_for('run_search_config_now', config_id=config.id) }}"
+                                                                method="POST" class="d-inline">
+                                                                <button type="button"
+                                                                    class="btn btn-sm btn-outline-primary"
+                                                                    onclick="runSearchConfig('{{ url_for('run_search_config_now', config_id=config.id) }}')">
+                                                                    <i class="fas fa-play-circle"></i>
+                                                                </button>
+                                                            </form>
+                                                            <form
+                                                                action="{{ url_for('delete_search_config', config_id=config.id) }}"
+                                                                method="POST" class="d-inline"
+                                                                onsubmit="return confirm('Are you sure you want to delete this configuration?');">
+                                                                <button type="submit"
+                                                                    class="btn btn-sm btn-outline-danger">
+                                                                    <i class="fas fa-trash"></i>
+                                                                </button>
+                                                            </form>
+                                                        </div>
+                                                    </td>
+                                                    {% endif %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                            {% else %}
+                            <div class="alert alert-info">
+                                <i class="fas fa-info-circle"></i> No search configurations found. Click "Add New
+                                Configuration" to create one.
+                            </div>
+                            {% endif %}
+                        </div>
+
+                        <!-- Notification Recipients Content -->
+                        <div class="tab-pane fade" id="notification-recipients-content" role="tabpanel">
+                            {% if search_configs %}
+                            {% for config in search_configs %}
+                            <div class="card mb-3">
+                                <div class="card-header d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0">Configuration #{{ config.id }} - {{ config.search_keyword or 'All
+                                        Tenders' }}</h6>
+                                    {% if current_user.role == 'admin' %}
+                                    <button class="btn btn-sm btn-primary" onclick="addRecipient({{ config.id }})">
+                                        <i class="fas fa-plus"></i> Add Recipient
+                                    </button>
+                                    {% endif %}
+                                </div>
+                                <div class="card-body">
+                                    {% if config.notification_recipients %}
+                                    <div class="table-responsive">
+                                        <table class="table table-sm">
+                                            <thead>
+                                                <tr>
+                                                    <th>Name</th>
+                                                    <th>Email</th>
+                                                    <th>Status</th>
+                                                    {% if current_user.role == 'admin'%}
+                                                    <th>Actions</th>
+                                                    {% endif %}
+                                                </tr>
+                                            </thead>
+                                            <tbody id="recipients-{{ config.id }}">
+                                                {% for recipient in config.notification_recipients %}
+                                                <tr id="recipient-{{ recipient.id }}">
+                                                    <td>{{ recipient.name }}</td>
+                                                    <td>{{ recipient.email }}</td>
+                                                    <td><span
+                                                            class="badge bg-{{ 'success' if recipient.is_active else 'secondary' }}">{{
+                                                            'Active' if recipient.is_active else 'Inactive' }}</span>
+                                                    </td>
+                                                    {% if current_user.role == 'admin'%}
+                                                    <td>
+                                                        <div class="btn-group">
+                                                            <button class="btn btn-sm btn-outline-primary"
+                                                                onclick="editRecipient({{ recipient.id }}, '{{ recipient.name }}', '{{ recipient.email }}', {{ recipient.is_active|lower }})"><i
+                                                                    class="fas fa-edit"></i></button>
+                                                            <button
+                                                                class="btn btn-sm btn-outline-{{ 'warning' if recipient.is_active else 'success' }}"
+                                                                onclick="toggleRecipient({{ recipient.id }})"><i
+                                                                    class="fas fa-{{ 'pause' if recipient.is_active else 'play' }}"></i></button>
+                                                            <button class="btn btn-sm btn-outline-danger"
+                                                                onclick="deleteRecipient({{ recipient.id }})"><i
+                                                                    class="fas fa-trash"></i></button>
+                                                        </div>
+                                                    </td>
+                                                    {% endif %}
+                                                </tr>
+                                                {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    {% else %}
+                                    <p class="text-muted mb-0"><i class="fas fa-info-circle"></i> No notification
+                                        recipients configured for this search.</p>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            {% endfor %}
+                            {% else %}
+                            <div class="alert alert-info"><i class="fas fa-info-circle"></i> No search configurations
+                                found. Create a search configuration first to manage notification recipients.</div>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="card mt-4">
+                        <div class="card-header">
+                            <h5 class="mb-0">About Scheduled Searches</h5>
+                        </div>
+                        <div class="card-body">
+                            <p>This page allows you to configure automated searches of the GeM tender portal that will
+                                run at specified times.</p>
+                            <ul>
+                                <li><strong>Keyword</strong> - The search term to use on the GeM portal. Leave empty to
+                                    browse all tenders.</li>
+                                <li><strong>Max Tenders</strong> - The maximum number of tenders to download and
+                                    analyze.</li>
+                                <li><strong>Execution Time</strong> - The time when this search will run daily (24-hour
+                                    format).</li>
+                            </ul>
+                            <p>The system will automatically analyze the downloaded tenders for all organizations based
+                                on their service definitions.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Brochures Tab -->
+                <div class="tab-pane fade" id="brochures" role="tabpanel" aria-labelledby="brochures-tab">
+                    <!-- Upload Brochures here -->
+                    <h5 class="card-title">
+                        <i class="fas fa-file-upload me-2"></i>Upload Brochures
+                    </h5><br>
+                    <form id="uploadForm">
+                        <div class="mb-4">
+                            <label for="fileInput" class="form-label">Choose Brochure (PDF or TXT)</label>
+                            <input type="file" class="form-control" id="fileInput" name="file" accept=".pdf,.txt"
+                                required>
+                            <div class="form-text">
+                                <i class="fas fa-info-circle me-1"></i>
+                                Currently supporting PDF and TXT files. You can select one file at a time.
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" onclick="uploadFiles()">
+                            <i class="fas fa-upload me-2"></i>Save Brochure
+                        </button>
+                        <div id="uploadStatus" class="mt-3 text-center"></div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Constraint modal -->
+<div class="modal fade" id="constraintModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="constraintModalTitle">Add Constraint</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="constraintForm">
+                    <input type="hidden" id="constraintId">
+                    <input type="hidden" id="constraintCategory">
+                    <div class="mb-3">
+                        <label for="constraintText" class="form-label">Constraint Description</label>
+                        <textarea class="form-control" id="constraintText" rows="3" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveConstraint">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recipient Modal -->
+<div class="modal fade" id="recipientModal" tabindex="-1" aria-labelledby="recipientModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="recipientModalLabel">Add Notification Recipient</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="recipientForm">
+                    <input type="hidden" id="recipientId" name="recipientId">
+                    <input type="hidden" id="searchConfigId" name="searchConfigId">
+                    <div class="mb-3">
+                        <label for="recipientName" class="form-label">Name <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="recipientName" name="name" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="recipientEmail" class="form-label">Email <span class="text-danger">*</span></label>
+                        <input type="email" class="form-control" id="recipientEmail" name="email" required>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="recipientActive" name="is_active" checked>
+                        <label class="form-check-label" for="recipientActive">Active (will receive
+                            notifications)</label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="saveRecipientBtn"
+                    onclick="saveRecipient()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- VERIFY USER MODAL -------------------------------------------------------------------------------------------------------->
+<div class="modal fade" id="verifyUserModal" tabindex="-1" aria-labelledby="verifyUserModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="verifyUserModalLabel"><i class="fas fa-user-check me-2"></i>Verify User</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="verifyUserForm">
+                    <div class="mb-3">
+                        <label for="verifyPassword" class="form-label">Current Password <span
+                                class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="verifyPassword" name="password"
+                            placeholder="Enter current password" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="verifyUserBtn">Verify</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- RESET PASSWORD MODAL ------------------------------------------------------------------------------------------------------->
+<div class="modal fade" id="resetPasswordModal" tabindex="-1" aria-labelledby="resetPasswordModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="resetPasswordModalLabel"><i class="fas fa-key me-2"></i>Reset Password</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="resetPasswordForm">
+                    <div class="mb-3">
+                        <label for="newPassword" class="form-label">New Password <span
+                                class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="newPassword" name="new_password" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="confirmPassword" class="form-label">Confirm Password <span
+                                class="text-danger">*</span></label>
+                        <input type="password" class="form-control" id="confirmPassword" name="confirm_password"
+                            required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="submitResetPasswordBtn">Update Password</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ADD NEW SEARCH CONFIGURATION MODAL -->
+<div class="modal fade" id="addSearchConfigModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-plus me-2"></i>Add New Search Configuration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addSearchConfigForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="searchKeyword" class="form-label">Search Keyword</label>
+                                <input type="text" class="form-control" id="searchKeyword" name="search_keyword"
+                                    placeholder="e.g., software, hardware, consulting">
+                                <div class="form-text">Enter keywords to search for specific tenders. Leave empty for
+                                    all tenders.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="maxTenders" class="form-label">Max Tenders <span
+                                        class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="maxTenders" name="max_tenders" value="50"
+                                    min="1" max="200" required>
+                                <div class="form-text">Maximum number of tenders to download and analyze</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="executionTime" class="form-label">Execution Time <span
+                                        class="text-danger">*</span></label>
+                                <input type="time" class="form-control" id="executionTime" name="execution_time"
+                                    value="09:00" required>
+                                <div class="form-text">Daily execution time (24-hour format)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3 form-check mt-4 pt-2">
+                                <input type="checkbox" class="form-check-input" id="isActive" name="is_active" checked>
+                                <label class="form-check-label" for="isActive">
+                                    <strong>Active</strong> - Start running this search immediately
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle me-2"></i>
+                        <strong>Note:</strong> The system will automatically analyze downloaded tenders against your
+                        organization's service definitions and constraints.
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveSearchConfig()">
+                    <i class="fas fa-save me-2"></i>Save Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- EDIT SEARCH CONFIGURATION MODAL -->
+<div class="modal fade" id="editSearchConfigModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">
+                    <i class="fas fa-edit me-2"></i>Edit Search Configuration
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="editSearchConfigForm">
+                    <input type="hidden" id="editConfigId" name="config_id">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editSearchKeyword" class="form-label">Search Keyword</label>
+                                <input type="text" class="form-control" id="editSearchKeyword" name="search_keyword"
+                                    placeholder="e.g., software, hardware, consulting">
+                                <div class="form-text">Enter keywords to search for specific tenders. Leave empty for
+                                    all tenders.</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editMaxTenders" class="form-label">Max Tenders <span
+                                        class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="editMaxTenders" name="max_tenders" min="1"
+                                    max="200" required>
+                                <div class="form-text">Maximum number of tenders to download and analyze</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="editExecutionTime" class="form-label">Execution Time <span
+                                        class="text-danger">*</span></label>
+                                <input type="time" class="form-control" id="editExecutionTime" name="execution_time"
+                                    required>
+                                <div class="form-text">Daily execution time (24-hour format)</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3 form-check mt-4 pt-2">
+                                <input type="checkbox" class="form-check-input" id="editIsActive" name="is_active">
+                                <label class="form-check-label" for="editIsActive">
+                                    <strong>Active</strong> - Keep this search running
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveEditSearchConfig()">
+                    <i class="fas fa-save me-2"></i>Update Configuration
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function () {
+        // Save service definition
+        $('#saveServiceDefinition').click(async function () {
+            const definition = $('#serviceDefinition').val();
+
+            try {
+                const urlPrefix = "{{ url_prefix }}";
+                console.log("Saving definition, URL prefix:", urlPrefix);
+
+                const response = await fetch(`${urlPrefix}/service-product-definition`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ definition: definition }),
+                    credentials: 'include'
+                });
+
+                const data = await response.json();
+                console.log("Save response:", data);
+
+                if (response.ok) {
+                    showAlert('success', 'Service definition saved successfully');
+                } else {
+                    showAlert('danger', data.error || 'Failed to save definition');
+                }
+            } catch (error) {
+                console.error('Error saving definition:', error);
+                showAlert('danger', 'Error saving service definition: ' + error.message);
+            }
+        });
+
+        // Helper function to show alerts
+        function showAlert(type, message) {
+            const alertHtml = `<div class="alert alert-${type} alert-dismissible fade show" role="alert">
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>`;
+
+            $('.tab-pane.active').prepend(alertHtml);
+
+            setTimeout(function () {
+                $('.alert').alert('close');
+            }, 3000);
+        }
+
+        // Constraint management
+        function bindConstraintEvents() {
+            $(document).off('click', '.edit-constraint').on('click', '.edit-constraint', function () {
+                const li = $(this).closest('li');
+                const id = li.data('id');
+                const text = li.find('.constraint-text').text();
+                const category = li.closest('.tab-pane').attr('id');
+
+                $('#constraintModalTitle').text('Edit ' + category.charAt(0).toUpperCase() + category.slice(1) + ' Constraint');
+                $('#constraintId').val(id);
+                $('#constraintCategory').val(category);
+                $('#constraintText').val(text);
+                $('#constraintModal').modal('show');
+            });
+
+            $(document).off('click', '.delete-constraint').on('click', '.delete-constraint', async function () {
+                if (confirm('Are you sure you want to delete this constraint?')) {
+                    const li = $(this).closest('li');
+                    const id = li.data('id');
+
+                    try {
+                        const urlPrefix = "{{ url_prefix }}";
+                        const response = await fetch(`${urlPrefix}/constraints/api`, {
+                            method: 'DELETE',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ id: id }),
+                            credentials: 'include'
+                        });
+
+                        if (response.ok) {
+                            li.remove();
+                            showAlert('success', 'Constraint deleted successfully');
+                        } else {
+                            const data = await response.json();
+                            showAlert('danger', data.error || 'Failed to delete constraint');
+                        }
+                    } catch (error) {
+                        console.error('Error deleting constraint:', error);
+                        showAlert('danger', 'Error deleting constraint: ' + error.message);
+                    }
+                }
+            });
+        }
+
+        bindConstraintEvents();
+
+        $('.add-constraint').click(function () {
+            const category = $(this).data('category');
+            $('#constraintModalTitle').text('Add ' + category.charAt(0).toUpperCase() + category.slice(1) + ' Constraint');
+            $('#constraintId').val('');
+            $('#constraintCategory').val(category);
+            $('#constraintText').val('');
+            $('#constraintModal').modal('show');
+        });
+
+        $('#saveConstraint').click(async function () {
+            const id = $('#constraintId').val();
+            const category = $('#constraintCategory').val();
+            const constraintText = $('#constraintText').val();
+
+            if (!constraintText) {
+                showAlert('warning', 'Please enter constraint text');
+                return;
+            }
+
+            try {
+                const urlPrefix = "{{ url_prefix }}";
+
+                if (id) {
+                    const response = await fetch(`${urlPrefix}/constraints/api`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ id: id, constraint: constraintText }),
+                        credentials: 'include'
+                    });
+
+                    if (response.ok) {
+                        $(`li[data-id="${id}"] .constraint-text`).text(constraintText);
+                        $('#constraintModal').modal('hide');
+                        showAlert('success', 'Constraint updated successfully');
+                    } else {
+                        const data = await response.json();
+                        showAlert('danger', data.error || 'Failed to update constraint');
+                    }
+                } else {
+                    const response = await fetch(`${urlPrefix}/constraints/api`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ category: category, constraint: constraintText }),
+                        credentials: 'include'
+                    });
+
+                    if (response.ok) {
+                        const data = await response.json();
+                        const newItem = `
+                        <li class="list-group-item d-flex justify-content-between align-items-center" data-id="${data.id}">
+                            <span class="constraint-text">${constraintText}</span>
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-outline-primary edit-constraint"><i class="fas fa-edit"></i></button>
+                                <button type="button" class="btn btn-sm btn-outline-danger delete-constraint"><i class="fas fa-trash"></i></button>
+                            </div>
+                        </li>
+                    `;
+                        $(`#${category}Constraints`).append(newItem);
+                        $('#constraintModal').modal('hide');
+                        showAlert('success', 'Constraint added successfully');
+
+                        bindConstraintEvents();
+                    } else {
+                        const data = await response.json();
+                        showAlert('danger', data.error || 'Failed to add constraint');
+                    }
+                }
+            } catch (error) {
+                console.error('Error with constraint:', error);
+                showAlert('danger', 'Error: ' + error.message);
+            }
+        });
+
+        console.log("Organization management script loaded");
+
+        const hash = window.location.hash;
+        if (hash) {
+            $(`#myTab button[data-bs-target="${hash}"]`).tab('show');
+        }
+
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            history.pushState(null, null, $(e.target).data('bs-target'));
+        });
+    });
+
+    // RECIPIENT MANAGEMENT FUNCTIONS
+    function addRecipient(configId) {
+        document.getElementById('recipientModalLabel').textContent = 'Add Notification Recipient';
+        document.getElementById('recipientForm').reset();
+        document.getElementById('recipientId').value = '';
+        document.getElementById('searchConfigId').value = configId;
+        document.getElementById('recipientActive').checked = true;
+        new bootstrap.Modal(document.getElementById('recipientModal')).show();
+    }
+
+    function editRecipient(recipientId, name, email, isActive) {
+        document.getElementById('recipientModalLabel').textContent = 'Edit Notification Recipient';
+        document.getElementById('recipientId').value = recipientId;
+        document.getElementById('recipientName').value = name;
+        document.getElementById('recipientEmail').value = email;
+        document.getElementById('recipientActive').checked = isActive;
+        new bootstrap.Modal(document.getElementById('recipientModal')).show();
+    }
+
+    // NOTIFICATION RECIPIENT FUNCTIONS - Also remove /api/ prefix
+    function saveRecipient() {
+        const form = document.getElementById('recipientForm');
+        const formData = new FormData(form);
+        const saveButton = document.getElementById('saveRecipientBtn');
+        const originalText = saveButton.textContent;
+
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+        const recipientId = formData.get('recipientId');
+
+        // CHANGED: Remove /api/ prefix
+        const urlPrefix = "{{ url_prefix }}";
+        const url = recipientId ? `${urlPrefix}/notification-recipients/${recipientId}` : `${urlPrefix}/notification-recipients`;
+        const method = recipientId ? 'PUT' : 'POST';
+
+        const data = {
+            name: formData.get('name'),
+            email: formData.get('email'),
+            is_active: formData.get('is_active') === 'on',
+            search_config_id: formData.get('searchConfigId')
+        };
+
+        fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(data),
+            credentials: 'include'
+        })
+            .then(async response => {
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Server returned non-JSON response:', text);
+                    throw new Error('Server returned HTML instead of JSON. Please check if you are logged in.');
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}`);
+                }
+
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    throw new Error(data.error || 'Failed to save recipient');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving recipient: ' + error.message);
+            })
+            .finally(() => {
+                saveButton.disabled = false;
+                saveButton.textContent = originalText;
+            });
+    }
+
+    function toggleRecipient(recipientId) {
+        // CHANGED: Remove /api/ prefix
+        const urlPrefix = "{{ url_prefix }}";
+        fetch(`${urlPrefix}/notification-recipients/${recipientId}/toggle`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            credentials: 'include'
+        })
+            .then(async response => {
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Server returned non-JSON response:', text);
+                    throw new Error('Server returned HTML instead of JSON');
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    throw new Error(data.error || 'Failed to toggle recipient');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error toggling recipient: ' + error.message);
+            });
+    }
+
+    function deleteRecipient(recipientId) {
+        if (confirm('Are you sure you want to delete this notification recipient?')) {
+            // CHANGED: Remove /api/ prefix
+            const urlPrefix = "{{ url_prefix }}";
+            fetch(`${urlPrefix}/notification-recipients/${recipientId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                credentials: 'include'
+            })
+                .then(async response => {
+                    const contentType = response.headers.get('content-type');
+                    if (!contentType || !contentType.includes('application/json')) {
+                        const text = await response.text();
+                        console.error('Server returned non-JSON response:', text);
+                        throw new Error('Server returned HTML instead of JSON');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.success) {
+                        document.getElementById('recipient-' + recipientId).remove();
+                    } else {
+                        throw new Error(data.error || 'Failed to delete recipient');
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Error deleting recipient: ' + error.message);
+                });
+        }
+    }
+
+    // SEARCH CONFIGURATION MANAGEMENT FUNCTIONS
+    function saveSearchConfig() {
+        const form = document.getElementById('addSearchConfigForm');
+        const formData = new FormData(form);
+        const saveButton = document.querySelector('#addSearchConfigModal .btn-primary');
+        const originalText = saveButton.innerHTML;
+
+        // Validate form
+        if (!formData.get('max_tenders') || !formData.get('execution_time')) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Saving...';
+
+        const data = {
+            search_keyword: formData.get('search_keyword') || null,
+            max_tenders: parseInt(formData.get('max_tenders')),
+            execution_time: formData.get('execution_time'),
+            is_active: formData.get('is_active') === 'on'
+        };
+
+        // CHANGED: Remove /api/ prefix to match working service-product-definition pattern
+        const urlPrefix = "{{ url_prefix }}";
+        fetch(`${urlPrefix}/search-configs`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(data),
+            credentials: 'include'
+        })
+            .then(async response => {
+                // Check if response is JSON
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Server returned non-JSON response:', text);
+                    throw new Error('Server returned HTML instead of JSON. Check if you are logged in and the endpoint exists.');
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('addSearchConfigModal')).hide();
+                    location.reload(); // Refresh to show new configuration
+                } else {
+                    throw new Error(result.error || 'Failed to save configuration');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error saving configuration: ' + error.message);
+            })
+            .finally(() => {
+                saveButton.disabled = false;
+                saveButton.innerHTML = originalText;
+            });
+    }
+
+    function editSearchConfig(configId, keyword, maxTenders, executionTime, isActive) {
+        document.getElementById('editConfigId').value = configId;
+        document.getElementById('editSearchKeyword').value = keyword || '';
+        document.getElementById('editMaxTenders').value = maxTenders;
+        document.getElementById('editExecutionTime').value = executionTime;
+        document.getElementById('editIsActive').checked = isActive;
+
+        new bootstrap.Modal(document.getElementById('editSearchConfigModal')).show();
+    }
+
+    function saveEditSearchConfig() {
+        const form = document.getElementById('editSearchConfigForm');
+        const formData = new FormData(form);
+        const saveButton = document.querySelector('#editSearchConfigModal .btn-primary');
+        const originalText = saveButton.innerHTML;
+
+        // Validate form
+        if (!formData.get('max_tenders') || !formData.get('execution_time')) {
+            alert('Please fill in all required fields');
+            return;
+        }
+
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Updating...';
+
+        const configId = formData.get('config_id');
+
+        // CHANGED: Remove /api/ prefix to match working pattern
+        const urlPrefix = "{{ url_prefix }}";
+        fetch(`${urlPrefix}/search-configs/${configId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                search_keyword: formData.get('search_keyword') || null,
+                max_tenders: parseInt(formData.get('max_tenders')),
+                execution_time: formData.get('execution_time'),
+                is_active: formData.get('is_active') === 'on'
+            }),
+            credentials: 'include'
+        })
+            .then(async response => {
+                const contentType = response.headers.get('content-type');
+                if (!contentType || !contentType.includes('application/json')) {
+                    const text = await response.text();
+                    console.error('Server returned non-JSON response:', text);
+                    throw new Error('Server returned HTML instead of JSON. Check if you are logged in and the endpoint exists.');
+                }
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
+                }
+
+                return response.json();
+            })
+            .then(result => {
+                if (result.success) {
+                    bootstrap.Modal.getInstance(document.getElementById('editSearchConfigModal')).hide();
+                    location.reload();
+                } else {
+                    throw new Error(result.error || 'Failed to update configuration');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Error updating configuration: ' + error.message);
+            })
+            .finally(() => {
+                saveButton.disabled = false;
+                saveButton.innerHTML = originalText;
+            });
+    }
+
+    function openVerifyUserModal() {
+        document.getElementById('verifyUserForm').reset();
+        new bootstrap.Modal(document.getElementById('verifyUserModal')).show();
+    }
+
+    // Verify existing user credentials
+    $('#verifyUserBtn').click(async function () {
+        const password = $('#verifyPassword').val();
+
+        if (!password) {
+            alert('Please fill all fields.');
+            return;
+        }
+
+        try {
+            const urlPrefix = "{{ url_prefix }}";
+            const response = await fetch(`${urlPrefix}/verify-user`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ password })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                // Verified, proceed to reset password modal
+                bootstrap.Modal.getInstance(document.getElementById('verifyUserModal')).hide();
+                document.getElementById('resetPasswordForm').reset();
+                new bootstrap.Modal(document.getElementById('resetPasswordModal')).show();
+            }
+            else {
+                alert(data.error || 'Invalid credentials');
+            }
+        }
+        catch (err) {
+            console.error(err);
+            alert('Error verifying user: ' + err.message);
+        }
+    });
+
+    // Submit new password
+    $('#submitResetPasswordBtn').click(async function () {
+        const newPassword = $('#newPassword').val();
+        const confirmPassword = $('#confirmPassword').val();
+
+        if (!newPassword || !confirmPassword) {
+            alert('Please fill all fields.');
+            return;
+        }
+        if (newPassword !== confirmPassword) {
+            alert('Passwords do not match.');
+            return;
+        }
+
+        try {
+            const urlPrefix = "{{ url_prefix }}";
+            const response = await fetch(`${urlPrefix}/reset-password`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ new_password: newPassword })
+            });
+
+            const data = await response.json();
+            if (response.ok && data.success) {
+                alert('Password updated successfully!');
+                bootstrap.Modal.getInstance(document.getElementById('resetPasswordModal')).hide();
+            }
+            else {
+                alert(data.error || 'Failed to update password');
+            }
+        }
+        catch (err) {
+            console.error(err);
+            alert('Error resetting password: ' + err.message);
+        }
+    });
+
+    async function uploadFiles() {
+        const fileInput = document.getElementById('fileInput');
+        const uploadStatus = document.getElementById('uploadStatus');
+
+        if (!fileInput.files.length) {
+            uploadStatus.innerHTML =
+                '<div class="alert alert-danger">Please select a file to upload.</div>';
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]); // ✅ single file only
+
+        uploadStatus.innerHTML = `
+        <div class="d-flex justify-content-center align-items-center">
+            <div class="spinner-border text-primary me-2" role="status"></div>
+            <span>Uploading and analyzing document...</span>
+        </div>
+    `;
+
+        try {
+            const urlPrefix = "{{ url_prefix }}";
+            const response = await fetch(`${urlPrefix}/upload-brochure`, {
+                method: 'POST',
+                body: formData,
+                credentials: 'include'
+            });
+
+            const data = await response.json();
+            console.log("Upload response:", data);
+
+            if (response.ok) {
+                uploadStatus.innerHTML = `
+                <div class="alert alert-success">
+                    <i class="fas fa-check-circle me-2"></i>${data.message}
+                </div>
+            `;
+
+            } else {
+                uploadStatus.innerHTML = `
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-triangle me-2"></i>
+                    ${data.error || 'Upload failed'}
+                </div>
+            `;
+            }
+        } catch (error) {
+            console.error('Upload error:', error);
+            uploadStatus.innerHTML =
+                '<div class="alert alert-danger">Error uploading file. Please try again.</div>';
+        }
+    }
+
+let statusCheckInterval = null;
+let statusCheckCount = 0;
+const MAX_CHECK_COUNT = 120; // Check for up to 10 minutes (120 * 5 seconds)
+let currentProcessId = null;
+
+function runSearchConfig(url) {
+    console.log('runSearchConfig called with URL:', url);
+    
+    // Show loading modal
+    const loadingModal = new bootstrap.Modal(document.getElementById('loadingModal'));
+    loadingModal.show();
+    
+    // Reset status
+    document.getElementById('loadingStatus').textContent = 'Searching and analyzing tenders...';
+    
+    // Make the request - this will stay open until process completes
+    fetch(url, {
+        method: 'POST',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include'
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(data => {
+                throw new Error(data.error || `HTTP error! status: ${response.status}`);
+            });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            console.log('Search completed successfully');
+            
+            document.getElementById('loadingStatus').innerHTML = `
+                <span class="text-success">
+                    <i class="fas fa-check-circle me-2"></i>
+                    Search complete! Redirecting to tenders page...
+                </span>
+            `;
+            
+            // Change spinner to checkmark
+            const spinner = document.querySelector('.spinner-border');
+            if (spinner) {
+                spinner.className = 'text-success mb-4';
+                spinner.innerHTML = '<i class="fas fa-check-circle fa-4x"></i>';
+            }
+            
+            // Redirect to tenders page
+            setTimeout(() => {
+                bootstrap.Modal.getInstance(document.getElementById('loadingModal')).hide();
+                window.location.href = '/gem-tenders';
+            }, 2000);
+        } else {
+            throw new Error(data.error || 'Search failed');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        document.getElementById('loadingStatus').innerHTML = `
+            <span class="text-danger">
+                <i class="fas fa-exclamation-triangle me-2"></i>
+                Error: ${error.message}
+            </span>
+        `;
+        
+        // Hide modal after showing error
+        setTimeout(() => {
+            bootstrap.Modal.getInstance(document.getElementById('loadingModal')).hide();
+        }, 3000);
+    });
+}
+function startStatusCheck() {
+    // Clear any existing interval
+    if (statusCheckInterval) {
+        clearInterval(statusCheckInterval);
+    }
+    
+    // Check status every 5 seconds
+    statusCheckInterval = setInterval(checkProcessStatus, 5000);
+}
+
+function checkProcessStatus() {
+    if (!currentProcessId) {
+        console.error('No process ID to check');
+        return;
+    }
+    
+    statusCheckCount++;
+    
+    fetch(`/api/process-status/${currentProcessId}`, {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        credentials: 'include'
+    })
+    .then(response => response.json())
+    .then(data => {
+        console.log('Status check:', data);
+        
+        // Update status message
+        document.getElementById('loadingStatus').textContent = 
+            `Processing... (checked ${statusCheckCount} times)`;
+        
+        // If process completed
+        if (data.completed) {
+            console.log('Process completed with status:', data.status);
+            
+            clearInterval(statusCheckInterval);
+            
+            if (data.status === 'completed') {
+                document.getElementById('loadingStatus').innerHTML = `
+                    <span class="text-success">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Search complete! Redirecting to tenders page...
+                    </span>
+                `;
+                
+                // Change spinner to checkmark
+                const spinner = document.querySelector('.spinner-border');
+                if (spinner) {
+                    spinner.className = 'text-success mb-4';
+                    spinner.innerHTML = '<i class="fas fa-check-circle fa-4x"></i>';
+                }
+                
+                // Redirect to tenders page
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('loadingModal')).hide();
+                    window.location.href = '/gem-tenders';
+                }, 2000);
+            } else {
+                // Process failed
+                document.getElementById('loadingStatus').innerHTML = `
+                    <span class="text-danger">
+                        <i class="fas fa-exclamation-triangle me-2"></i>
+                        Process failed: ${data.error || 'Unknown error'}
+                    </span>
+                `;
+                
+                setTimeout(() => {
+                    bootstrap.Modal.getInstance(document.getElementById('loadingModal')).hide();
+                }, 3000);
+            }
+        }
+        
+        // Timeout after max checks
+        if (statusCheckCount >= MAX_CHECK_COUNT) {
+            console.log('Status check timeout');
+            
+            clearInterval(statusCheckInterval);
+            
+            document.getElementById('loadingStatus').innerHTML = `
+                <span class="text-warning">
+                    <i class="fas fa-clock me-2"></i>
+                    Process is taking longer than expected. 
+                    <a href="/gem-tenders">Click here to check results</a>
+                </span>
+            `;
+            
+            // Add a manual redirect button
+            const modalBody = document.querySelector('#loadingModal .modal-body');
+            const redirectBtn = document.createElement('button');
+            redirectBtn.className = 'btn btn-primary mt-3';
+            redirectBtn.innerHTML = 'Go to Tenders Page';
+            redirectBtn.onclick = function() {
+                bootstrap.Modal.getInstance(document.getElementById('loadingModal')).hide();
+                window.location.href = '/gem-tenders';
+            };
+            modalBody.appendChild(redirectBtn);
+        }
+    })
+    .catch(error => {
+        console.error('Error checking status:', error);
+    });
+}
+</script>
+
+<!-- Loading Modal -->
+<div class="modal fade" id="loadingModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1" aria-labelledby="loadingModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="loadingModalLabel">
+                    <i class="fas fa-search me-2"></i>Processing Tender Search
+                </h5>
+                <!-- No close button -->
+            </div>
+            <div class="modal-body text-center py-5">
+                <div class="spinner-border text-primary mb-4" style="width: 5rem; height: 5rem;" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <h5 class="mb-3">Searching and analyzing tenders...</h5>
+                <p class="text-muted mb-0" id="loadingStatus">Please wait while we process your request.</p>
+            </div>
+            <!-- NO FOOTER - completely removed -->
+        </div>
+    </div>
+</div>
+
+{% endblock %}

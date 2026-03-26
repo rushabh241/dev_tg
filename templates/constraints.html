@@ -1,0 +1,402 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-1">
+    <div class="row mb-1">
+        <div class="col-12 d-flex justify-content-between align-items-center">
+            <div>
+                <h3>Organizational Capabilities</h3>
+                <p class="text-muted">Define your organization's capabilities to help identify risks in tenders</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Definition of Services and Products Section -->
+    <div class="row mb-2">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-briefcase me-2"></i>Definition of Services and Products
+                    </h5>
+                    <p class="text-muted">Define your organization's services and products to better analyze tender opportunities</p>
+                                                         
+                    <form id="definitionForm" class="mt-2">
+    <!-- Add a style to make the textarea container align left -->
+<div class="form-group" style="text-align: left; padding-left: 0; margin-left: 0;">
+    <textarea class="form-control" id="serviceProductDefinition" style="width: 330%; margin-left: 0; text-align: left;" 
+              rows="2" placeholder="Describe your organization's services and products...">{{ service_product_definition }}</textarea>
+</div>
+    <div class="d-flex justify-content-end mt-2">
+        <button type="button" class="btn btn-primary" id="saveDefinitionBtn">
+            <i class="fas fa-save me-2"></i>Save Definition
+        </button>
+    </div>
+</form>
+                    
+                    <div id="definitionSavedAlert" class="alert alert-success mt-3 d-none">
+                        <i class="fas fa-check-circle me-2"></i>
+                        Your service and product definition has been saved successfully.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Constraints Manager Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title" data-bs-toggle="tooltip" data-bs-placement="right" title="Constraints are organization-specific limitations that may create risks when bidding for tenders. For example, 'Can only handle projects under $5 million' or 'Manufacturing capacity limited to 500 units per month'.">
+                        <i class="fas fa-cogs me-2"></i>Manage Constraints
+                    </h5>
+                    <p class="text-muted">These constraints will be used to evaluate risks for all tenders</p>
+                    
+                    
+                    
+                    <ul class="nav nav-tabs" id="constraintTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="financial-tab" data-bs-toggle="tab" data-bs-target="#financial" type="button" role="tab">
+                                <i class="fas fa-money-bill-wave me-2"></i>Financial
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="technical-tab" data-bs-toggle="tab" data-bs-target="#technical" type="button" role="tab">
+                                <i class="fas fa-wrench me-2"></i>Technical
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="legal-tab" data-bs-toggle="tab" data-bs-target="#legal" type="button" role="tab">
+                                <i class="fas fa-balance-scale me-2"></i>Legal
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="other-tab" data-bs-toggle="tab" data-bs-target="#other" type="button" role="tab">
+                                <i class="fas fa-th-list me-2"></i>Other
+                            </button>
+                        </li>
+                    </ul>
+                    
+                    <div class="tab-content p-3 border border-top-0 rounded-bottom" id="constraintTabContent">
+                        <!-- Financial Constraints Tab -->
+                        <div class="tab-pane fade show active" id="financial" role="tabpanel">
+                            <div id="financialConstraints">
+                                {% if financial_constraints %}
+                                    {% for constraint in financial_constraints %}
+                                    <div class="constraint-item d-flex justify-content-between align-items-center bg-light rounded p-3 mb-2" id="constraint-{{ constraint.id }}">
+                                        <div class="constraint-text">{{ constraint.description }}</div>
+                                        <div class="constraint-actions">
+                                            <button class="btn btn-sm btn-primary me-1" onclick="editConstraint({{ constraint.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-primary" onclick="deleteConstraint({{ constraint.id }})">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center text-muted py-4" id="noFinancialConstraints">
+                                        <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                        <p>No financial constraints defined yet</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <form id="financialConstraintForm" class="mt-4">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="newFinancialConstraint" placeholder="Add a new financial constraint...">
+                                    <button class="btn btn-primary" type="button" onclick="addConstraint('financial')">
+                                        <i class="fas fa-plus"></i> Add
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Technical Constraints Tab -->
+                        <div class="tab-pane fade" id="technical" role="tabpanel">
+                            <div id="technicalConstraints">
+                                {% if technical_constraints %}
+                                    {% for constraint in technical_constraints %}
+                                    <div class="constraint-item d-flex justify-content-between align-items-center bg-light rounded p-3 mb-2" id="constraint-{{ constraint.id }}">
+                                        <div class="constraint-text">{{ constraint.description }}</div>
+                                        <div class="constraint-actions">
+                                            <button class="btn btn-sm btn-primary me-1" onclick="editConstraint({{ constraint.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-primary" onclick="deleteConstraint({{ constraint.id }})">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center text-muted py-4" id="noTechnicalConstraints">
+                                        <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                        <p>No technical constraints defined yet</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <form id="technicalConstraintForm" class="mt-4">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="newTechnicalConstraint" placeholder="Add a new technical constraint...">
+                                    <button class="btn btn-primary" type="button" onclick="addConstraint('technical')">
+                                        <i class="fas fa-plus"></i> Add
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Legal Constraints Tab -->
+                        <div class="tab-pane fade" id="legal" role="tabpanel">
+                            <div id="legalConstraints">
+                                {% if legal_constraints %}
+                                    {% for constraint in legal_constraints %}
+                                    <div class="constraint-item d-flex justify-content-between align-items-center bg-light rounded p-3 mb-2" id="constraint-{{ constraint.id }}">
+                                        <div class="constraint-text">{{ constraint.description }}</div>
+                                        <div class="constraint-actions">
+                                            <button class="btn btn-sm btn-primary me-1" onclick="editConstraint({{ constraint.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-primary" onclick="deleteConstraint({{ constraint.id }})">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center text-muted py-4" id="noLegalConstraints">
+                                        <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                        <p>No legal constraints defined yet</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <form id="legalConstraintForm" class="mt-4">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="newLegalConstraint" placeholder="Add a new legal constraint...">
+                                    <button class="btn btn-primary" type="button" onclick="addConstraint('legal')">
+                                        <i class="fas fa-plus"></i> Add
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        <!-- Other Constraints Tab -->
+                        <div class="tab-pane fade" id="other" role="tabpanel">
+                            <div id="otherConstraints">
+                                {% if other_constraints %}
+                                    {% for constraint in other_constraints %}
+                                    <div class="constraint-item d-flex justify-content-between align-items-center bg-light rounded p-3 mb-2" id="constraint-{{ constraint.id }}">
+                                        <div class="constraint-text">{{ constraint.description }}</div>
+                                        <div class="constraint-actions">
+                                            <button class="btn btn-sm btn-primary me-1" onclick="editConstraint({{ constraint.id }})">
+                                                <i class="fas fa-edit"></i>
+                                            </button>
+                                            <button class="btn btn-sm btn-primary" onclick="deleteConstraint({{ constraint.id }})">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    {% endfor %}
+                                {% else %}
+                                    <div class="text-center text-muted py-4" id="noOtherConstraints">
+                                        <i class="fas fa-info-circle fa-2x mb-3"></i>
+                                        <p>No other constraints defined yet</p>
+                                    </div>
+                                {% endif %}
+                            </div>
+                            
+                            <form id="otherConstraintForm" class="mt-4">
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="newOtherConstraint" placeholder="Add a new constraint...">
+                                    <button class="btn btn-primary" type="button" onclick="addConstraint('other')">
+                                        <i class="fas fa-plus"></i> Add
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    async function addConstraint(category) {
+        const inputField = document.getElementById(`new${category.charAt(0).toUpperCase() + category.slice(1)}Constraint`);
+        const constraintText = inputField.value.trim();
+        
+        if (!constraintText) {
+            showAlert('warning', 'Please enter a constraint');
+            return;
+        }
+        
+        try {
+			const urlPrefix = "{{ url_prefix }}";
+			const response = await fetch(`${urlPrefix}/constraints/api`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+            category: category,
+            constraint: constraintText
+			})
+		});
+            
+            if (response.ok) {
+                const data = await response.json();
+                // Reload page to refresh constraints
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                showAlert('danger', data.error || 'Failed to add constraint');
+            }
+        } catch (error) {
+            console.error('Error adding constraint:', error);
+            showAlert('danger', 'Failed to add constraint');
+        }
+    }
+    
+    async function editConstraint(id) {
+        const constraintItem = document.getElementById(`constraint-${id}`);
+        const constraintText = constraintItem.querySelector('.constraint-text').innerText;
+        
+        // Replace the constraint element with an edit form
+        constraintItem.innerHTML = `
+            <div class="input-group">
+                <input type="text" class="form-control edit-constraint-input" value="${constraintText}">
+                <button class="btn btn-success" onclick="saveEditedConstraint(${id})">
+                    <i class="fas fa-check"></i>
+                </button>
+                <button class="btn btn-primary" onclick="cancelEdit(${id}, '${constraintText}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    }
+    
+    async function saveEditedConstraint(id) {
+        const constraintItem = document.getElementById(`constraint-${id}`);
+        const newText = constraintItem.querySelector('.edit-constraint-input').value.trim();
+        
+        if (!newText) {
+            showAlert('warning', 'Constraint cannot be empty');
+            return;
+        }
+        
+        try {
+			const urlPrefix = "{{ url_prefix }}";
+			const response = await fetch(`${urlPrefix}/constraints/api`, {
+			method: 'PUT',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+            id: id,
+            constraint: newText
+			})
+		});
+            
+            if (response.ok) {
+                // Reload page to refresh constraints
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                showAlert('danger', data.error || 'Failed to update constraint');
+            }
+        } catch (error) {
+            console.error('Error updating constraint:', error);
+            showAlert('danger', 'Failed to update constraint');
+        }
+    }
+    
+    function cancelEdit(id, originalText) {
+        // Reload page to reset UI
+        window.location.reload();
+    }
+    
+    async function deleteConstraint(id) {
+        if (!confirm('Are you sure you want to delete this constraint?')) {
+            return;
+        }
+        
+		try {
+			const urlPrefix = "{{ url_prefix }}";
+			const response = await fetch(`${urlPrefix}/constraints/api`, {
+			method: 'DELETE',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+            id: id
+			})
+		});
+            
+            if (response.ok) {
+                // Reload page to refresh constraints
+                window.location.reload();
+            } else {
+                const data = await response.json();
+                showAlert('danger', data.error || 'Failed to delete constraint');
+            }
+        } catch (error) {
+            console.error('Error deleting constraint:', error);
+            showAlert('danger', 'Failed to delete constraint');
+        }
+    }
+    
+    function showAlert(type, message) {
+        const alertDiv = document.createElement('div');
+        alertDiv.className = `alert alert-${type} alert-dismissible fade show`;
+        alertDiv.role = 'alert';
+        alertDiv.innerHTML = `
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        `;
+        
+        // Insert before the first card
+        const firstCard = document.querySelector('.card');
+        firstCard.parentNode.insertBefore(alertDiv, firstCard);
+        
+        // Auto-dismiss after 5 seconds
+        setTimeout(() => {
+            alertDiv.classList.remove('show');
+            setTimeout(() => alertDiv.remove(), 500);
+        }, 5000);
+    }
+    
+    // Service and Product Definition functions
+    document.getElementById('saveDefinitionBtn').addEventListener('click', saveServiceProductDefinition);
+
+    async function saveServiceProductDefinition() {
+        const definitionText = document.getElementById('serviceProductDefinition').value.trim();
+        
+        try {
+			const urlPrefix = "{{ url_prefix }}";
+			const response = await fetch(`${urlPrefix}/service-product-definition`, {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify({
+            definition: definitionText
+			})
+		});
+            
+            if (response.ok) {
+                // Show success message
+                const alertElement = document.getElementById('definitionSavedAlert');
+                alertElement.classList.remove('d-none');
+                
+                // Hide alert after 5 seconds
+                setTimeout(() => {
+                    alertElement.classList.add('d-none');
+                }, 5000);
+            } else {
+                const data = await response.json();
+                showAlert('danger', data.error || 'Failed to save definition');
+            }
+        } catch (error) {
+            console.error('Error saving definition:', error);
+            showAlert('danger', 'Failed to save definition');
+        }
+    }
+</script>
+{% endblock %}

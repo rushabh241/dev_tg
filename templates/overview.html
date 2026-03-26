@@ -1,0 +1,1063 @@
+{% extends "base.html" %}
+
+{% block content %}
+
+<style>
+    /* --- Items Table Dynamic Layout --- */
+    .items-table {
+        table-layout: fixed !important;
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    /* Make all columns neat and vertically aligned */
+    .items-table th,
+    .items-table td {
+        vertical-align: middle;
+        padding: 8px 12px;
+    }
+
+    /* Quantity column: compact & centered */
+    .items-table th:nth-child(2),
+    .items-table td:nth-child(2) {
+        width: 10%;
+        white-space: normal !important;
+        text-align: center;
+        word-wrap: break-word;
+        word-break: break-word;
+    }
+
+    /* Product name & Address: allow wrapping (no scrollbars) */
+    .items-table th:nth-child(1),
+    .items-table td:nth-child(1),
+    .items-table th:nth-child(5),
+    .items-table td:nth-child(5) {
+        white-space: normal !important;
+        /* allow text wrapping */
+        word-wrap: break-word;
+        /* break long words if needed */
+        word-break: break-word;
+    }
+
+    /* Keep Spec Link column tight */
+    .items-table th:nth-child(6),
+    .items-table td:nth-child(6) {
+        width: 1%;
+        white-space: nowrap;
+        text-align: center;
+    }
+
+    /* Optional: make the table a bit more compact visually */
+    .items-table td {
+        font-size: 0.95rem;
+    }
+</style>
+
+
+<div class="container mt-1">
+    <div class="row mb-4">
+        <div class="col-12">
+            <h3>Tender Overview</h3>
+            <p class="text-muted">Key information extracted from your tender document</p>
+        </div>
+    </div>
+
+    <!-- Basic Information Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-info-circle me-2"></i>Basic Information
+                    </h5>
+
+                    <div class="table-responsive mt-4">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" style="width: 25%">Parameter</th>
+                                    <th scope="col">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-hashtag me-2 text-primary"></i>Tender Number
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="tender-number-content">
+                                            {{ overview.tender_number or 'Not specified' }}
+                                            {% if pdf_path %}
+                                            <button class="btn btn-sm btn-outline-secondary"
+                                                onclick="viewPdf('{{ url_prefix }}/view-pdf?path={{ pdf_path | urlencode }}')"
+                                                title="View PDF">
+                                                <i class="fas fa-file-pdf"></i> View PDF
+                                            </button>
+                                            {% endif %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% if tender.source == 'MahaTender_Original' or tender.source == 'CPPP_Original' %}
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-building me-2 text-primary"></i>Description
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="org-details-content">
+                                            {{ overview.description or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-building me-2 text-primary"></i>Issuing Organization
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="org-details-content">
+                                            {{ overview.organization_details or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Critical Dates Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-calendar-alt me-2"></i>Critical Dates & Deadlines
+                    </h5>
+
+                    <div class="table-responsive mt-4">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" style="width: 25%">Parameter</th>
+                                    <th scope="col">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-calendar-day me-2 text-danger"></i>Due Date
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="due-date-content">
+                                            <strong>{{ overview.due_date or 'Not specified' }}</strong>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-calendar-day me-2 text-danger"></i>Bid Opening Date
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="bid-opening-date-content">
+                                            <strong>{{ overview.bid_opening_date or 'Not specified' }}</strong>
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-calendar-day me-2 text-danger"></i>Bid Offer Validity (From End
+                                        Date)
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="bid-offer-validity-content">
+                                            <strong>{{ overview.bid_offer_validity or 'Not specified' }}</strong>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% if tender.source != 'MahaTender_Original' and tender.source != 'CPPP_Original' %}
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-question-circle me-2 text-warning"></i>Last Date for Queries
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content content-text-dark"
+                                            id="query-deadline-content">
+                                            {{ overview.question_deadline or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Products Section -->
+     {% if tender.source != 'MahaTender_Original' and tender.source != 'CPPP_Original' %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-list-alt me-2"></i>Product Specifications
+                    </h5>
+
+                    <div class="table-responsive mt-4">
+                        <table class="table table-hover items-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width: 20%;" scope="col">Product</th>
+                                    <th style="width: 8%;" scope="col">Quantity</th>
+                                    <th style="width: 8%;" scope="col">Delivery Days</th>
+                                    <th style="width: 10%;" scope="col">Consignee Reporting/Officer</th>
+                                    <th style="width: 25%;" scope="col">Delivery Address</th>
+                                    <th style="width: 15%;" scope="col">Specification Link</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {# Step 1: Get only products with valid links #}
+                                {% set products_with_links = products
+                                |selectattr('specification_link')
+                                |rejectattr('specification_link', 'equalto', 'Not Specified')
+                                |rejectattr('specification_link', 'equalto', 'Document not available')
+                                |list
+                                %}
+
+                                {# Step 2: Check if all valid links are identical #}
+                                {% set all_links_same = (
+                                products_with_links|map(attribute='specification_link')|unique|list|length == 1
+                                and products_with_links|length > 0
+                                ) %}
+
+                                {# Helper macro: detect document type #}
+                                {% macro detect_doc_type(url) -%}
+                                {% set lower = url|lower %}
+                                {% if lower.endswith('.pdf') %}
+                                Specification Document
+                                {% elif lower.endswith('.xls') or lower.endswith('.xlsx') or lower.endswith('.csv') %}
+                                BOQ Document
+                                {% else %}
+                                Document
+                                {% endif %}
+                                {%- endmacro %}
+
+                                {# Step 3: Shared link row if all products use same link(s) #}
+                                {% if all_links_same and products_with_links[0].specification_link %}
+                                <tr class="table-info">
+                                    <td colspan="5" class="text-center">
+                                        <strong>All products share the same specification documents:</strong>
+                                    </td>
+                                    <td>
+                                        {% set links = products_with_links[0].specification_link.split(',') %}
+                                        <div class="document-links">
+                                            {% for item in links %}
+                                            {% set clean_item = item.strip() %}
+                                            {% if clean_item %}
+                                            {% set url = clean_item.split(' (')[0].strip() %}
+                                            {% set doc_type = detect_doc_type(url) %}
+                                            <a href="{{ url }}" target="_blank"
+                                                class="text-primary text-decoration-none me-2"
+                                                title="Open {{ doc_type }}">
+                                                📄 {{ doc_type }}
+                                            </a><br>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+
+                                {# Step 4: Render each product row #}
+                                {% for product in products %}
+                                <tr>
+                                    <td>{{ product.product_name or 'Not Specified' }}</td>
+                                    <td>{{ product.quantity.replace("in document", "") or 'Not Specified' }}</td>
+                                    <td>{{ product.delivery_days or 'Not Specified' }}</td>
+                                    <td>{{ product.consignee_name or 'Not Specified' }}</td>
+                                    <td>{{ product.delivery_address or 'Not Specified' }}</td>
+                                    <td style="color: #4b3b8c;">
+                                        {% if all_links_same and products_with_links[0].specification_link %}
+                                        <span class="text-muted">—</span>
+                                        {% else %}
+                                        {% if product.specification_link and product.specification_link not in ['Not
+                                        Specified', 'No specific product link available - check tender document portal']
+                                        %}
+                                        {% set links = product.specification_link.split(',') %}
+                                        <div class="document-links">
+                                            {% for item in links %}
+                                            {% set clean_item = item.strip() %}
+                                            {% if clean_item %}
+                                            {% set url = clean_item.split(' (')[0].strip() %}
+                                            {% set doc_type = detect_doc_type(url) %}
+                                            <a href="{{ url }}" target="_blank"
+                                                class="text-primary text-decoration-none me-2"
+                                                title="Open {{ doc_type }}">
+                                                📄 {{ doc_type }}
+                                            </a><br>
+                                            {% endif %}
+                                            {% endfor %}
+                                        </div>
+                                        {% else %}
+                                        <span class="text-muted">—</span>
+                                        {% endif %}
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+
+    <!-- Financial Requirements Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-currency-rupee"></i> Financial Requirements
+                    </h5>
+
+                    <div class="table-responsive mt-4">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" style="width: 25%">Parameter</th>
+                                    <th scope="col">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-money-bill-wave me-2 text-success"></i>EMD Amount
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="emd-amount-content">
+                                            {{ overview.emd_amount or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-money-bill-wave me-2 text-success"></i>Estimated Bid Value
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="estimated-cost-content">
+                                            {{ overview.estimated_cost or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>   
+                                {% if tender.source != 'MahaTender_Original' and tender.source != 'CPPP_Original' %}                             
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-shield-alt me-2 text-success"></i>Performance Security
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="performance-security-content">
+                                            {{ overview.performance_security or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-credit-card me-2 text-success"></i>Payment Terms
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="payment-terms-content">
+                                            {{ overview.payment_terms or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endif %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Technical Requirements Section -->
+     {% if tender.source != 'MahaTender_Original' and tender.source != 'CPPP_Original' %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-cogs me-2"></i>Technical Requirements
+                    </h5>
+
+                    <div class="table-responsive mt-4">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" style="width: 25%">Parameter</th>
+                                    <th scope="col">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-clipboard-list me-2 text-info"></i>Technical Specifications
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="tech-specs-content">
+                                            {{ overview.technical_specifications or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-tasks me-2 text-info"></i>Scope of Work
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="scope-work-content">
+                                            {{ overview.scope_of_work or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-star me-2 text-info"></i>Performance Standards
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="performance-standards-content">
+                                            {{ overview.performance_standards or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Qualification & Evaluation Section -->
+     {% if tender.source != 'MahaTender_Original' and tender.source != 'CPPP_Original' %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4 h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-clipboard-check me-2"></i>Qualification Criteria
+                    </h5>
+
+                    <div class="mt-3">
+                        {% if overview.qualification_criteria and overview.qualification_criteria != "Not specified" %}
+                        <div class="scrollable-content formatted-content text-dark" id="qualification-content">
+                            {% if overview.qualification_criteria is string %}
+                            {{ overview.qualification_criteria }}
+                            {% else %}
+                            <ul class="list-group list-group-flush">
+                                {% for criterion in overview.qualification_criteria %}
+                                <li class="list-group-item text-dark">{{ criterion }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No qualification criteria information available</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4 h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-chart-line me-2"></i>Evaluation Criteria
+                    </h5>
+
+                    <div class="mt-3">
+                        {% if overview.evaluation_criteria and overview.evaluation_criteria != "Not specified" %}
+                        <div class="scrollable-content formatted-content text-dark" id="evaluation-content">
+                            {% if overview.evaluation_criteria is string %}
+                            {{ overview.evaluation_criteria }}
+                            {% else %}
+                            <ul class="list-group list-group-flush">
+                                {% for criterion in overview.evaluation_criteria %}
+                                <li class="list-group-item text-dark">{{ criterion }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No evaluation criteria information available</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <br>
+
+    <!-- Special Provisions Section -->
+     {% if tender.source != 'MahaTender_Original' and tender.source != 'CPPP_Original' %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-exclamation-triangle me-2"></i>Special Provisions
+                    </h5>
+
+                    <div class="table-responsive mt-4">
+                        <table class="table table-hover">
+                            <thead class="table-light">
+                                <tr>
+                                    <th scope="col" style="width: 25%">Parameter</th>
+                                    <th scope="col">Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-gavel me-2 text-dark"></i>Reverse Auction
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="reverse-auction-content">
+                                            {{ overview.reverse_auction or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-building me-2 text-dark"></i>MSME Preferences
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="msme-preferences-content">
+                                            {{ overview.msme_preferences or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td class="fw-bold">
+                                        <i class="fas fa-globe-asia me-2 text-dark"></i>Border Country Clause
+                                    </td>
+                                    <td>
+                                        <div class="scrollable-content formatted-content text-dark"
+                                            id="border-country-content">
+                                            {{ overview.border_country_clause or 'Not specified' }}
+                                        </div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Compliance & Documentation Section -->
+     {% if tender.source != 'MahaTender_Original' and tender.source != 'CPPP_Original' %}
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4 h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-ban me-2"></i>Rejection Criteria
+                    </h5>
+
+                    <div class="mt-3">
+                        {% if overview.rejection_criteria and overview.rejection_criteria != "Not specified" %}
+                        <div class="scrollable-content formatted-content text-dark" id="rejection-content">
+                            {% if overview.rejection_criteria is string %}
+                            <p class="text-dark">{{ overview.rejection_criteria }}</p>
+                            {% else %}
+                            <ul class="list-group list-group-flush">
+                                {% for criterion in overview.rejection_criteria %}
+                                <li class="list-group-item text-dark">{{ criterion }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No rejection criteria information available</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card shadow-sm mb-4 h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-file-alt me-2"></i>Documentation Requirements
+                    </h5>
+
+                    <div class="mt-3">
+                        {% if overview.documentation_requirements and overview.documentation_requirements != "Not
+                        specified" %}
+                        <div class="scrollable-content formatted-content text-dark" id="documentation-content">
+                            {% if overview.documentation_requirements is string %}
+                            <p class="text-dark">{{ overview.documentation_requirements }}</p>
+                            {% else %}
+                            <ul class="list-group list-group-flush">
+                                {% for requirement in overview.documentation_requirements %}
+                                <li class="list-group-item text-dark">{{ requirement }}</li>
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No documentation requirements information available</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    <br>
+
+    <!-- Additional Details -->
+     {% if tender.source != 'MahaTender_Original' and tender.source != 'CPPP_Original' %}
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4 h-100">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="bi bi-info-circle"></i> Additional Details
+                    </h5>
+
+                    <div class="mt-3">
+                        {% if overview.additional_details and overview.additional_details != "Not specified" %}
+                        <div class="scrollable-content formatted-content text-dark" id="additional-details-content">
+                            {% if overview.additional_details is string %}
+                            {% set content_lines = overview.additional_details.replace('\r', '').split('\n') %}
+                            <ul class="ps-3 text-dark">
+                                {% for line in content_lines %}
+                                {% set line = line.strip() %}
+                                {% if line %}
+                                <li class="mb-1">
+                                    {% if 'http://' in line or 'https://' in line %}
+                                    {% set line_parts = line.split('http') %}
+                                    {{ line_parts[0] | replace('\n', '<br>') | safe }}
+                                    {% for part in line_parts[1:] %}
+                                    {% set url = 'http' + part.split(' ')[0] %}
+                                    {% set remaining_text = part[part.find(' ') + 1:] if ' ' in part else '' %}
+                                    <a href="{{ url }}" target="_blank" class="text-primary text-decoration-none ms-1"
+                                        style="color: #4b3b8c;">
+                                        <i class="bi bi-file-earmark-check-fill"></i> Document
+                                    </a>
+                                    {{ remaining_text | replace('\n', '<br>') | safe }}
+                                    {% endfor %}
+                                    {% else %}
+                                    {{ line | replace('\n', '<br>') | safe }}
+                                    {% endif %}
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                            </ul>
+                            {% else %}
+                            <ul class="ps-3 text-dark">
+                                {% for details in overview.additional_details %}
+                                {% set details = details.strip() %}
+                                {% if details %}
+                                <li class="mb-1">
+                                    {% if 'http://' in details or 'https://' in details %}
+                                    {% set details_parts = details.split('http') %}
+                                    {{ details_parts[0] | replace('\n', '<br>') | safe }}
+                                    {% for part in details_parts[1:] %}
+                                    {% set url = 'http' + part.split(' ')[0] %}
+                                    {% set remaining_text = part[part.find(' ') + 1:] if ' ' in part else '' %}
+                                    <a href="{{ url }}" target="_blank" class="text-primary text-decoration-none ms-1"
+                                        style="color: #4b3b8c;">
+                                        <i class="bi bi-file-earmark-check-fill"></i> Document
+                                    </a>
+                                    {{ remaining_text | replace('\n', '<br>') | safe }}
+                                    {% endfor %}
+                                    {% else %}
+                                    {{ details | replace('\n', '<br>') | safe }}
+                                    {% endif %}
+                                </li>
+                                {% endif %}
+                                {% endfor %}
+                            </ul>
+                            {% endif %}
+                        </div>
+                        {% else %}
+                        <p class="text-muted">No additional details available</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <br>
+
+    <!-- Documents Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body">
+                    <h5 class="card-title">
+                        <i class="fas fa-paperclip me-2"></i>Associated Documents
+                    </h5>
+
+                    <div class="mt-3">
+                        <div id="documentList" class="list-group"></div>
+                        <div id="noDocumentsMessage" class="text-muted" style="display: none;">
+                            No documents available
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Action Buttons Section -->
+    <div class="row">
+        <div class="col-md-12">
+            <div class="card shadow-sm mb-4">
+                <div class="card-body text-center">
+                    <div class="email-section">
+                        <button type="button" class="btn btn-primary me-2" id="emailButton">
+                            <i class="fas fa-envelope"></i> Email Tender Overview
+                        </button>
+                        <button type="button" class="btn btn-secondary me-2" onclick="downloadTenderPDF()">
+                            <i class="fas fa-file-pdf"></i> Export PDF
+                        </button>
+                        <button type="button" class="btn btn-info" onclick="generateSummary()">
+                            <i class="fas fa-chart-line"></i> Generate Executive Summary
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Email Modal -->
+<div class="modal fade" id="emailModal" tabindex="-1" role="dialog" aria-labelledby="emailModalLabel"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="emailModalLabel">Send Tender Overview via Email</h5>
+                <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <form id="emailForm">
+                    <div class="form-group">
+                        <label style="width: 150%;" for="recipientEmail">Recipient Email Address</label>
+                        <input style="width: 150%;" type="email" class="form-control" id="recipientEmail" required>
+                    </div>
+                </form>
+                <div id="emailStatus" class="mt-3"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="sendEmailBtn">Send Email</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- PDF Viewer Modal -->
+<div class="modal fade" id="pdfViewerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Tender Document</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <iframe id="pdfViewerFrame" src="" style="width: 100%; height: 75vh;"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    /* Custom styles to ensure all content text is black */
+    .text-dark {
+        color: #000 !important;
+    }
+
+    .formatted-content {
+        color: #000 !important;
+    }
+
+    .formatted-content p {
+        color: #000 !important;
+    }
+
+    .formatted-content li {
+        color: #000 !important;
+    }
+
+    .list-group-item.text-dark {
+        color: #000 !important;
+    }
+
+    /* Override any Bootstrap color classes for content areas */
+    .scrollable-content.text-success,
+    .scrollable-content.text-info,
+    .scrollable-content.text-warning,
+    .scrollable-content.text-danger {
+        color: #000 !important;
+    }
+</style>
+
+<!-- JavaScript -->
+<script>
+    function downloadTenderPDF() {
+        window.location.href = "{{ url_for('export_tender_pdf') }}";
+    }
+
+    function generateSummary() {
+        alert('Executive summary generation functionality will be implemented soon');
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        console.log("DOM loaded");
+
+        // Function to format lengthy text content
+        function formatContent(elementId) {
+            const element = document.getElementById(elementId);
+            if (!element) return;
+
+            let content = element.textContent || element.innerText;
+            if (!content || content.trim() === 'Not specified' || content.length < 100) {
+                // For short content, remove scrollable styling
+                element.classList.remove('scrollable-content');
+                element.classList.add('short-content');
+                return;
+            }
+
+            // Handle content with bullet points from backend
+            if (content.includes('â€¢') || content.includes('\nâ€¢')) {
+                // Convert bullet points to proper HTML
+                let formatted = content
+                    .split(/\nâ€¢|\n\s*â€¢/)
+                    .filter(item => item.trim().length > 0)
+                    .map(item => {
+                        let cleanItem = item.replace(/^â€¢\s*/, '').trim();
+                        if (cleanItem.length > 10) {
+                            return `<li>${cleanItem}</li>`;
+                        }
+                        return '';
+                    })
+                    .filter(item => item.length > 0)
+                    .join('');
+
+                if (formatted) {
+                    element.innerHTML = `<ul>${formatted}</ul>`;
+                }
+            } else {
+                // For plain text, try to create bullet points from sentences
+                let sentences = content.split(/[.;]\s+/).filter(s => s.trim().length > 20);
+                if (sentences.length > 2) {
+                    let formatted = sentences
+                        .map(sentence => {
+                            let cleanSentence = sentence.trim();
+                            if (!cleanSentence.endsWith('.') && !cleanSentence.endsWith(';')) {
+                                cleanSentence += '.';
+                            }
+                            return `<li>${cleanSentence}</li>`;
+                        })
+                        .join('');
+
+                    element.innerHTML = `<ul>${formatted}</ul>`;
+                }
+            }
+
+            // Handle **bold** formatting from backend
+            if (element.innerHTML.includes('**')) {
+                element.innerHTML = element.innerHTML.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+            }
+
+            // Handle newlines for proper formatting
+            if (element.innerHTML.includes('\\n')) {
+                element.innerHTML = element.innerHTML.replace(/\\n/g, '<br>');
+            }
+        }
+
+        // Apply formatting to all content areas
+        const contentIds = [
+            'tender-number-content', 'org-details-content', 'due-date-content',
+            'query-deadline-content', 'emd-amount-content', 'performance-security-content',
+            'payment-terms-content', 'tech-specs-content', 'scope-work-content',
+            'performance-standards-content', 'qualification-content', 'evaluation-content',
+            'reverse-auction-content', 'msme-preferences-content', 'border-country-content',
+            'rejection-content', 'documentation-content'
+        ];
+
+        contentIds.forEach(formatContent);
+
+        // Show modal when Email button is clicked
+        $("#emailButton").click(function () {
+            console.log("Email button clicked");
+            $("#emailModal").modal('show');
+        });
+
+        // Send email
+        $("#sendEmailBtn").click(function () {
+            const email = $("#recipientEmail").val();
+
+            if (!email) {
+                $("#emailStatus").html('<div class="alert alert-danger">Please enter an email address</div>');
+                return;
+            }
+
+            $("#sendEmailBtn").prop('disabled', true);
+            $("#sendEmailBtn").html('<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Sending...');
+
+            $.ajax({
+                url: urlPrefix + "/send-tender-email",
+                type: "POST",
+                contentType: "application/json",
+                data: JSON.stringify({ email: email }),
+                xhrFields: {
+                    withCredentials: true
+                },
+                success: function (response) {
+                    $("#emailStatus").html('<div class="alert alert-success">Email sent successfully!</div>');
+                    setTimeout(function () {
+                        $("#emailModal").modal('hide');
+                        $("#emailForm")[0].reset();
+                        $("#emailStatus").html('');
+                    }, 2000);
+                },
+                error: function (xhr) {
+                    let errorMsg = "Failed to send email";
+                    if (xhr.responseJSON && xhr.responseJSON.error) {
+                        errorMsg = xhr.responseJSON.error;
+                    }
+                    $("#emailStatus").html('<div class="alert alert-danger">' + errorMsg + '</div>');
+                },
+                complete: function () {
+                    $("#sendEmailBtn").prop('disabled', false);
+                    $("#sendEmailBtn").html('Send Email');
+                }
+            });
+        });
+
+        async function loadDocuments() {
+            try {
+                console.log("Loading documents...");
+                const response = await fetch(urlPrefix + '/documents');
+                if (!response.ok) {
+                    throw new Error(`Server returned ${response.status}`);
+                }
+                const documents = await response.json();
+                console.log("Loaded documents:", documents);
+                updateDocumentList(documents);
+            } catch (error) {
+                console.error('Error loading documents:', error);
+            }
+        }
+
+        function updateDocumentList(documents) {
+            const documentList = document.getElementById('documentList');
+            const noDocumentsMessage = document.getElementById('noDocumentsMessage');
+
+            if (!documentList) {
+                console.log("Document list container not found, skipping update");
+                return;
+            }
+
+            if (!documents || documents.length === 0) {
+                documentList.innerHTML = '';
+                if (noDocumentsMessage) {
+                    noDocumentsMessage.style.display = 'block';
+                }
+                return;
+            }
+
+            if (noDocumentsMessage) {
+                noDocumentsMessage.style.display = 'none';
+            }
+
+            let documentHtml = '';
+            documents.forEach((doc, index) => {
+                const fileIcon = doc.filename.toLowerCase().endsWith('.pdf') ? 'fa-file-pdf' : 'fa-file-alt';
+                documentHtml += `
+                <div class="list-group-item d-flex justify-content-between align-items-center" id="doc-${doc.id}">
+                    <div>
+                        <i class="fas ${fileIcon} me-2 ${index === 0 ? 'text-primary' : 'text-secondary'}"></i>
+                        ${doc.filename} ${index === 0 ? '<span class="badge bg-primary ms-2">Main Document</span>' : ''}
+                    </div>
+                    <button class="btn btn-sm btn-danger" onclick="deleteDocument('${doc.id}')">
+                        <i class="fas fa-trash-alt"></i>
+                    </button>
+                </div>
+            `;
+            });
+
+            documentList.innerHTML = documentHtml;
+        }
+
+        async function deleteDocument(docId) {
+            if (!confirm('Are you sure you want to delete this document?')) {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${urlPrefix}/documents/${docId}`, {
+                    method: 'DELETE'
+                });
+
+                if (response.ok) {
+                    loadDocuments();
+                } else {
+                    alert('Failed to delete document');
+                }
+            } catch (error) {
+                console.error('Error deleting document:', error);
+                alert('Error deleting document');
+            }
+        }
+
+        // Make deleteDocument globally available
+        window.deleteDocument = deleteDocument;
+
+        // Load documents on page load
+        loadDocuments();
+    });
+
+    function viewPdf(pdfUrl) {
+        document.getElementById('pdfViewerFrame').src = pdfUrl;
+        const modal = new bootstrap.Modal(document.getElementById('pdfViewerModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}
